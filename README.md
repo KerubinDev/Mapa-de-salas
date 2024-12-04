@@ -193,4 +193,4 @@ graph TD;
 
 ## **Licença**  
 
-Este projeto é licenciado sob a [Licença](https://opensource.org/licenses/MIT).  
+Este projeto é licenciado sob a [Licença](LICENSE).  
