@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Logs do Sistema - Sistema de Gestão de Salas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Carrega as configurações de tema do localStorage
+        const tema = JSON.parse(localStorage.getItem('tema')) || {
+            corPrimaria: '#1d4ed8',
+            corSecundaria: '#60a5fa',
+            corFundo: '#f9fafb',
+            corTexto: '#111827'
+        };
+
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: tema.corPrimaria,
+                        secondary: tema.corSecundaria,
+                        background: tema.corFundo,
+                        textColor: tema.corTexto
+                    }
+                }
+            }
+        }
+    </script>
+    <link rel="icon" href="data:,">
+</head>
+<body class="bg-background">
+    <!-- Cabeçalho -->
+    <header class="bg-primary text-white shadow-lg">
+        <nav class="container mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <h1 class="text-2xl font-bold">Logs do Sistema</h1>
+                <div class="space-x-4">
+                    <a href="index.html" class="hover:underline">Dashboard</a>
+                    <a href="usuarios.html" class="hover:underline">Usuários</a>
+                    <a href="salas.html" class="hover:underline">Salas</a>
+                    <a href="reservas.html" class="hover:underline">Reservas</a>
+                    <a href="configuracoes.html" class="hover:underline">Configurações</a>
+                    <button id="btnSair" 
+                            class="bg-white text-primary px-4 py-2 rounded-lg 
+                                   hover:bg-opacity-90 transition">
+                        Sair
+                    </button>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Conteúdo Principal -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- Filtros -->
+        <div class="bg-white p-6 rounded-lg shadow mb-6">
+            <h2 class="text-lg font-bold mb-4">Filtros</h2>
+            <form id="formFiltros" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">
+                        Data Início
+                    </label>
+                    <input type="date" name="dataInicio"
+                           class="mt-1 block w-full px-3 py-2 border rounded-lg">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">
+                        Data Fim
+                    </label>
+                    <input type="date" name="dataFim"
+                           class="mt-1 block w-full px-3 py-2 border rounded-lg">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">
+                        Usuário
+                    </label>
+                    <select name="usuarioId"
+                            class="mt-1 block w-full px-3 py-2 border rounded-lg">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">
+                        Ação
+                    </label>
+                    <select name="acao"
+                            class="mt-1 block w-full px-3 py-2 border rounded-lg">
+                        <option value="">Todas</option>
+                        <option value="login">Login</option>
+                        <option value="logout">Logout</option>
+                        <option value="criar">Criação</option>
+                        <option value="editar">Edição</option>
+                        <option value="excluir">Exclusão</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+
+        <!-- Lista de Logs -->
+        <div class="bg-white rounded-lg shadow overflow-hidden">
+            <table class="w-full">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                            Data/Hora
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                            Usuário
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                            Ação
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                            Detalhes
+                        </th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                            IP
+                        </th>
+                    </tr>
+                </thead>
+                <tbody id="listaLogs">
+                    <!-- Será preenchido via JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- Font Awesome para ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    
+    <!-- Scripts -->
+    <script src="/js/temas.js"></script>
+    <script src="/js/admin/logs.js"></script>
+</body>
+</html> 

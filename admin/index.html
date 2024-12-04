@@ -5,7 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel Administrativo - Sistema de Gestão de Salas</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="../js/temas.js"></script>
+    <script>
+        // Carrega as configurações de tema do localStorage
+        const tema = JSON.parse(localStorage.getItem('tema')) || {
+            corPrimaria: '#1d4ed8',
+            corSecundaria: '#60a5fa',
+            corFundo: '#f9fafb',
+            corTexto: '#111827'
+        };
+
+        // Configura o Tailwind com as cores personalizadas
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: tema.corPrimaria,
+                        secondary: tema.corSecundaria,
+                        background: tema.corFundo,
+                        textColor: tema.corTexto
+                    }
+                }
+            }
+        }
+    </script>
     <link rel="icon" href="data:,">
 </head>
 <body class="bg-background">
@@ -30,39 +52,108 @@
 
     <!-- Conteúdo Principal -->
     <main class="container mx-auto px-4 py-8">
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Resumo em Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <!-- Card de Salas -->
             <div class="bg-white p-6 rounded-lg shadow">
-                <h3 class="text-xl font-bold mb-4">Salas</h3>
-                <p class="text-4xl font-bold text-primary mb-2" id="totalSalas">0</p>
-                <a href="salas.html" 
-                   class="text-primary hover:underline">
-                    Gerenciar salas →
-                </a>
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold">Salas</h3>
+                    <span class="text-primary">
+                        <i class="fas fa-door-open text-2xl"></i>
+                    </span>
+                </div>
+                <p class="text-3xl font-bold text-primary mb-2" id="totalSalas">0</p>
+                <p class="text-sm text-gray-600">salas cadastradas</p>
             </div>
 
             <!-- Card de Reservas -->
             <div class="bg-white p-6 rounded-lg shadow">
-                <h3 class="text-xl font-bold mb-4">Reservas</h3>
-                <p class="text-4xl font-bold text-primary mb-2" id="totalReservas">0</p>
-                <a href="reservas.html" 
-                   class="text-primary hover:underline">
-                    Gerenciar reservas →
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold">Reservas</h3>
+                    <span class="text-primary">
+                        <i class="fas fa-calendar-check text-2xl"></i>
+                    </span>
+                </div>
+                <p class="text-3xl font-bold text-primary mb-2" id="totalReservas">0</p>
+                <p class="text-sm text-gray-600">reservas ativas</p>
+            </div>
+
+            <!-- Card de Turmas -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold">Turmas</h3>
+                    <span class="text-primary">
+                        <i class="fas fa-users text-2xl"></i>
+                    </span>
+                </div>
+                <p class="text-3xl font-bold text-primary mb-2" id="totalTurmas">0</p>
+                <p class="text-sm text-gray-600">turmas registradas</p>
+            </div>
+
+            <!-- Card de Usuários -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold">Usuários</h3>
+                    <span class="text-primary">
+                        <i class="fas fa-user-circle text-2xl"></i>
+                    </span>
+                </div>
+                <p class="text-3xl font-bold text-primary mb-2" id="totalUsuarios">0</p>
+                <p class="text-sm text-gray-600">usuários ativos</p>
+            </div>
+        </div>
+
+        <!-- Ações Rápidas -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <!-- Reservas Recentes -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-lg font-bold mb-4">Reservas Recentes</h3>
+                <div class="space-y-4" id="listaReservasRecentes">
+                    <!-- Será preenchido via JavaScript -->
+                </div>
+                <a href="reservas.html" class="block mt-4 text-primary hover:underline">
+                    Ver todas as reservas →
                 </a>
             </div>
 
-            <!-- Card de Configurações -->
+            <!-- Ações Rápidas -->
             <div class="bg-white p-6 rounded-lg shadow">
-                <h3 class="text-xl font-bold mb-4">Configurações</h3>
-                <p class="mb-2">Personalize o sistema</p>
-                <a href="configuracoes.html" 
-                   class="text-primary hover:underline">
-                    Acessar configurações →
-                </a>
+                <h3 class="text-lg font-bold mb-4">Ações Rápidas</h3>
+                <div class="grid grid-cols-2 gap-4">
+                    <button onclick="window.location.href='salas.html'"
+                            class="p-4 border-2 border-gray-200 rounded-lg hover:border-primary
+                                   transition flex flex-col items-center gap-2">
+                        <i class="fas fa-plus-circle text-2xl text-primary"></i>
+                        <span>Nova Sala</span>
+                    </button>
+                    <button onclick="window.location.href='reservas.html'"
+                            class="p-4 border-2 border-gray-200 rounded-lg hover:border-primary
+                                   transition flex flex-col items-center gap-2">
+                        <i class="fas fa-calendar-plus text-2xl text-primary"></i>
+                        <span>Nova Reserva</span>
+                    </button>
+                    <button onclick="window.location.href='configuracoes.html'"
+                            class="p-4 border-2 border-gray-200 rounded-lg hover:border-primary
+                                   transition flex flex-col items-center gap-2">
+                        <i class="fas fa-cog text-2xl text-primary"></i>
+                        <span>Configurações</span>
+                    </button>
+                    <button onclick="window.location.href='/'"
+                            class="p-4 border-2 border-gray-200 rounded-lg hover:border-primary
+                                   transition flex flex-col items-center gap-2">
+                        <i class="fas fa-eye text-2xl text-primary"></i>
+                        <span>Ver Quadro</span>
+                    </button>
+                </div>
             </div>
         </div>
     </main>
 
-    <script src="../js/admin.js"></script>
+    <!-- Font Awesome para ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    
+    <!-- Scripts -->
+    <script src="/js/temas.js"></script>
+    <script src="/js/admin/dashboard.js"></script>
 </body>
 </html> 
