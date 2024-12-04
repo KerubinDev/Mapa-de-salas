@@ -286,16 +286,25 @@ function aplicarFiltros() {
  * Event Listeners
  */
 document.addEventListener('DOMContentLoaded', () => {
-    buscarDados().then(() => {
-        preencherSelectSalas();
-        preencherSelectTurmas();
-    });
+    // Event listeners para os botões do cabeçalho
+    document.getElementById('btnNovaSala')
+        .addEventListener('click', () => mostrarModal('modalSala'));
+    document.getElementById('btnNovaTurma')
+        .addEventListener('click', () => mostrarModal('modalTurma'));
+    document.getElementById('btnNovaReserva')
+        .addEventListener('click', () => mostrarModal('modalReserva'));
 
-    // Adicionar listeners para filtros
+    // Event listeners para filtros
     document.getElementById('pesquisa')
         .addEventListener('input', aplicarFiltros);
     document.getElementById('filtroTurno')
         .addEventListener('change', aplicarFiltros);
     document.getElementById('filtroCapacidade')
         .addEventListener('change', aplicarFiltros);
+
+    // Carrega os dados iniciais
+    buscarDados().then(() => {
+        preencherSelectSalas();
+        preencherSelectTurmas();
+    });
 }); 
