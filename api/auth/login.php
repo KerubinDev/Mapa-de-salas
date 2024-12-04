@@ -1,20 +1,10 @@
 <?php
+require_once '../config.php';
 require_once 'AuthManager.php';
-
-// Tratamento específico para OPTIONS (preflight CORS)
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    header('Access-Control-Allow-Origin: *');
-    header('Access-Control-Allow-Methods: POST, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type');
-    header('Content-Type: application/json');
-    exit(0);
-}
 
 // Verifica se é uma requisição POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['erro' => 'Método não permitido']);
-    exit;
+    responderErro('Método não permitido', 405);
 }
 
 try {
@@ -31,11 +21,17 @@ try {
     
     // Gera um token único
     $token = bin2hex(random_bytes(32));
-    $usuario['token'] = $token;
-
-    // Salva o token no banco de dados
-    $dados['usuarios'][$indice] = $usuario;
-    salvarDados($dados);
+    
+    // Atualiza o usuário com o token
+    $dadosDB = lerDados();
+    foreach ($dadosDB['usuarios'] as &$u) {
+        if ($u['id'] === $usuario['id']) {
+            $u['token'] = $token;
+            $usuario['token'] = $token;
+            break;
+        }
+    }
+    salvarDados($dadosDB);
 
     // Remove informações sensíveis antes de enviar
     unset($usuario['senha']);
@@ -43,6 +39,5 @@ try {
     // Retorna os dados do usuário com o token
     responderJson($usuario);
 } catch (Exception $e) {
-    http_response_code(401);
-    echo json_encode(['erro' => $e->getMessage()]);
+    responderErro($e->getMessage(), 401);
 } 

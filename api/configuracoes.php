@@ -2,11 +2,6 @@
 require_once 'config.php';
 require_once 'middleware.php';
 
-// Tratamento específico para OPTIONS (preflight CORS)
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    exit(0);
-}
-
 // Verifica autenticação
 try {
     $usuario = verificarAutenticacao();

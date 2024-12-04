@@ -44,16 +44,4 @@ function tratarCORS() {
 
 // Aplica tratamento CORS para todas as requisições
 tratarCORS();
-
-/**
- * Middleware para verificar autenticação
- */
-function verificarAutenticacao() {
-    $auth = AuthManager::getInstance();
-    
-    if (!$auth->verificarAutenticacao()) {
-        responderErro('Não autorizado', 401);
-    }
-    
-    return $auth->getUsuarioAutenticado();
-} 
+ 

@@ -41,25 +41,22 @@ class GerenciadorConfiguracoes {
                 fetch('../api/auth/logs.php', { headers })
             ]);
 
-            // Primeiro verifica se as respostas são JSON válido
-            const configData = await configResp.text();
-            const logsData = await logsResp.text();
-
-            let configJson, logsJson;
-            try {
-                configJson = JSON.parse(configData);
-                logsJson = JSON.parse(logsData);
-            } catch (e) {
-                console.error('Resposta não é JSON válido:', { configData, logsData });
-                throw new Error('Resposta inválida do servidor');
-            }
-
             if (!configResp.ok || !logsResp.ok) {
-                throw new Error(configJson.erro || logsJson.erro || 'Erro ao carregar dados');
+                const configErro = await configResp.text();
+                const logsErro = await logsResp.text();
+                
+                try {
+                    const configJson = JSON.parse(configErro);
+                    const logsJson = JSON.parse(logsErro);
+                    throw new Error(configJson.erro || logsJson.erro || 'Erro ao carregar dados');
+                } catch (e) {
+                    console.error('Resposta não é JSON:', { configErro, logsErro });
+                    throw new Error('Erro ao processar resposta do servidor');
+                }
             }
 
-            this._configuracoes = configJson;
-            this._logs = logsJson;
+            this._configuracoes = await configResp.json();
+            this._logs = await logsResp.json();
         } catch (erro) {
             console.error('Erro ao carregar dados:', erro);
             
