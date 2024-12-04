@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Administrativo - Sistema de Gestão de Salas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="../js/temas.js"></script>
+    <link rel="icon" href="data:,">
+</head>
+<body class="bg-background">
+    <!-- Cabeçalho -->
+    <header class="bg-primary text-white shadow-lg">
+        <nav class="container mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <h1 class="text-2xl font-bold">Painel Administrativo</h1>
+                <div class="space-x-4">
+                    <a href="salas.html" class="hover:underline">Salas</a>
+                    <a href="reservas.html" class="hover:underline">Reservas</a>
+                    <a href="configuracoes.html" class="hover:underline">Configurações</a>
+                    <button id="btnSair" 
+                            class="bg-white text-primary px-4 py-2 rounded-lg 
+                                   hover:bg-opacity-90 transition">
+                        Sair
+                    </button>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Conteúdo Principal -->
+    <main class="container mx-auto px-4 py-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Card de Salas -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-xl font-bold mb-4">Salas</h3>
+                <p class="text-4xl font-bold text-primary mb-2" id="totalSalas">0</p>
+                <a href="salas.html" 
+                   class="text-primary hover:underline">
+                    Gerenciar salas →
+                </a>
+            </div>
+
+            <!-- Card de Reservas -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-xl font-bold mb-4">Reservas</h3>
+                <p class="text-4xl font-bold text-primary mb-2" id="totalReservas">0</p>
+                <a href="reservas.html" 
+                   class="text-primary hover:underline">
+                    Gerenciar reservas →
+                </a>
+            </div>
+
+            <!-- Card de Configurações -->
+            <div class="bg-white p-6 rounded-lg shadow">
+                <h3 class="text-xl font-bold mb-4">Configurações</h3>
+                <p class="mb-2">Personalize o sistema</p>
+                <a href="configuracoes.html" 
+                   class="text-primary hover:underline">
+                    Acessar configurações →
+                </a>
+            </div>
+        </div>
+    </main>
+
+    <script src="../js/admin.js"></script>
+</body>
+</html> 

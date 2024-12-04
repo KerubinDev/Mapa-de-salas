@@ -307,4 +307,49 @@ document.addEventListener('DOMContentLoaded', () => {
         preencherSelectSalas();
         preencherSelectTurmas();
     });
+});
+
+/**
+ * Verifica se está em uma página que requer autenticação
+ */
+function verificarPaginaProtegida() {
+    const paginasProtegidas = [
+        '/admin/',
+        '/admin/salas.html',
+        '/admin/reservas.html',
+        '/admin/configuracoes.html'
+    ];
+
+    const paginaAtual = window.location.pathname;
+    
+    if (paginasProtegidas.some(pagina => paginaAtual.includes(pagina))) {
+        if (!window.gerenciadorAuth.verificarAutenticacao()) {
+            window.location.href = '/login.html';
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * Verifica se há mensagem de sucesso no cadastro
+ */
+function verificarMensagemCadastro() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('cadastro') === 'sucesso') {
+        const form = document.getElementById('formLogin');
+        if (form) {
+            const mensagem = document.createElement('div');
+            mensagem.className = 'bg-green-50 text-green-600 p-4 rounded-lg mb-4';
+            mensagem.textContent = 'Cadastro realizado com sucesso! Faça login para continuar.';
+            form.insertBefore(mensagem, form.firstChild);
+        }
+    }
+}
+
+// Executa as verificações quando a página carregar
+document.addEventListener('DOMContentLoaded', () => {
+    verificarPaginaProtegida();
+    verificarMensagemCadastro();
 }); 

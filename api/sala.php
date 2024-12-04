@@ -1,5 +1,11 @@
 <?php
 require_once 'config.php';
+require_once 'middleware.php';
+
+// Verifica autenticação para métodos que modificam dados
+if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+    $usuario = verificarAutenticacao();
+}
 
 // Tratamento específico para OPTIONS (preflight CORS)
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
