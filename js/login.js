@@ -53,7 +53,7 @@ class GerenciadorLogin {
             }
             
             // Redireciona para o painel administrativo
-            window.location.href = 'admin/';
+            window.location.href = 'admin/adminpanel.html';
         } catch (erro) {
             console.error('Erro no login:', erro);
             this.mostrarErro(erro.message);
