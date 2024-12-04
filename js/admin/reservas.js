@@ -274,16 +274,13 @@ class GerenciadorReservas {
             salaId: form.salaId.value,
             turmaId: form.turmaId.value,
             horarioInicio: form.horarioInicio.value,
-            horarioFim: form.horarioFim.value,
-            dataInicio: form.dataInicio.value,
-            dataFim: form.dataFim.value,
-            diasSemana: diasSemana
+            horarioFim: form.horarioFim.value
         };
 
         // Gera todas as datas de reserva
         const datas = this.gerarDatasReserva(
-            dadosBase.dataInicio,
-            dadosBase.dataFim,
+            form.dataInicio.value,
+            form.dataFim.value,
             diasSemana
         );
 
@@ -400,7 +397,12 @@ class GerenciadorReservas {
             if (reservaId && reserva.id === reservaId) return false;
 
             return reserva.data === dados.data &&
-                   reserva.horario === dados.horario &&
+                   ((dados.horarioInicio >= reserva.horarioInicio && 
+                     dados.horarioInicio < reserva.horarioFim) ||
+                    (dados.horarioFim > reserva.horarioInicio && 
+                     dados.horarioFim <= reserva.horarioFim) ||
+                    (dados.horarioInicio <= reserva.horarioInicio && 
+                     dados.horarioFim >= reserva.horarioFim)) &&
                    (reserva.salaId === dados.salaId || 
                     reserva.turmaId === dados.turmaId);
         });
@@ -411,7 +413,8 @@ class GerenciadorReservas {
         try {
             const params = new URLSearchParams({
                 data: dados.data,
-                horario: dados.horario,
+                horarioInicio: dados.horarioInicio,
+                horarioFim: dados.horarioFim,
                 salaId: dados.salaId,
                 turmaId: dados.turmaId
             });
@@ -421,6 +424,9 @@ class GerenciadorReservas {
             }
 
             const resposta = await fetch(`../api/reserva.php/verificar?${params}`);
+            if (!resposta.ok) {
+                throw new Error('Erro ao verificar conflito');
+            }
             const resultado = await resposta.json();
 
             return resultado.conflito;
