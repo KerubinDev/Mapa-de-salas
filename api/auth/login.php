@@ -29,7 +29,19 @@ try {
     $auth = AuthManager::getInstance();
     $usuario = $auth->login($dados['email'], $dados['senha']);
     
-    echo json_encode($usuario);
+    // Gera um token único
+    $token = bin2hex(random_bytes(32));
+    $usuario['token'] = $token;
+
+    // Salva o token no banco de dados
+    $dados['usuarios'][$indice] = $usuario;
+    salvarDados($dados);
+
+    // Remove informações sensíveis antes de enviar
+    unset($usuario['senha']);
+
+    // Retorna os dados do usuário com o token
+    responderJson($usuario);
 } catch (Exception $e) {
     http_response_code(401);
     echo json_encode(['erro' => $e->getMessage()]);

@@ -41,19 +41,31 @@ class GerenciadorConfiguracoes {
                 fetch('../api/auth/logs.php', { headers })
             ]);
 
-            if (!configResp.ok || !logsResp.ok) {
-                const configErro = await configResp.json().catch(() => ({}));
-                const logsErro = await logsResp.json().catch(() => ({}));
-                throw new Error(configErro.erro || logsErro.erro || 'Erro ao carregar dados');
+            // Primeiro verifica se as respostas são JSON válido
+            const configData = await configResp.text();
+            const logsData = await logsResp.text();
+
+            let configJson, logsJson;
+            try {
+                configJson = JSON.parse(configData);
+                logsJson = JSON.parse(logsData);
+            } catch (e) {
+                console.error('Resposta não é JSON válido:', { configData, logsData });
+                throw new Error('Resposta inválida do servidor');
             }
 
-            this._configuracoes = await configResp.json();
-            this._logs = await logsResp.json();
+            if (!configResp.ok || !logsResp.ok) {
+                throw new Error(configJson.erro || logsJson.erro || 'Erro ao carregar dados');
+            }
+
+            this._configuracoes = configJson;
+            this._logs = logsJson;
         } catch (erro) {
             console.error('Erro ao carregar dados:', erro);
             
             if (erro.message.includes('Não autorizado') || 
-                erro.message.includes('Token')) {
+                erro.message.includes('Token') ||
+                erro.message.includes('inválido')) {
                 window.location.href = '/login.html';
                 return;
             }

@@ -2,14 +2,8 @@
 require_once 'config.php';
 require_once 'middleware.php';
 
-// Define o tipo de conteúdo como JSON
-header('Content-Type: application/json');
-
 // Tratamento específico para OPTIONS (preflight CORS)
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    header('Access-Control-Allow-Origin: *');
-    header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type, Authorization');
     exit(0);
 }
 
@@ -17,14 +11,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 try {
     $usuario = verificarAutenticacao();
     if ($usuario['tipo'] !== 'admin') {
-        http_response_code(403);
-        echo json_encode(['erro' => 'Acesso negado']);
-        exit;
+        responderErro('Acesso negado', 403);
     }
 } catch (Exception $e) {
-    http_response_code(401);
-    echo json_encode(['erro' => 'Não autorizado']);
-    exit;
+    responderErro($e->getMessage(), $e->getCode());
 }
 
 /**

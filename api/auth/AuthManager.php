@@ -267,4 +267,17 @@ class AuthManager {
 
         return $logs;
     }
+    
+    /**
+     * Verifica se um token é válido
+     */
+    public function verificarToken($token) {
+        $dados = lerDados();
+        foreach ($dados['usuarios'] as $usuario) {
+            if (isset($usuario['token']) && $usuario['token'] === $token) {
+                return $usuario;
+            }
+        }
+        return null;
+    }
 } 

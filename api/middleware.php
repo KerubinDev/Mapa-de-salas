@@ -18,7 +18,11 @@ function verificarAutenticacao() {
     $auth = AuthManager::getInstance();
     
     try {
-        return $auth->verificarToken($token);
+        $usuario = $auth->verificarToken($token);
+        if (!$usuario) {
+            throw new Exception('Token inválido', 401);
+        }
+        return $usuario;
     } catch (Exception $e) {
         throw new Exception('Token inválido', 401);
     }
