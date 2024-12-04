@@ -5,7 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Sistema de Gestão de Salas</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="js/temas.js"></script>
+    <script>
+        // Carrega as configurações de tema do localStorage
+        const tema = JSON.parse(localStorage.getItem('tema')) || {
+            corPrimaria: '#1d4ed8',
+            corSecundaria: '#60a5fa',
+            corFundo: '#f9fafb',
+            corTexto: '#111827'
+        };
+
+        // Configura o Tailwind com as cores personalizadas
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: tema.corPrimaria,
+                        secondary: tema.corSecundaria,
+                        background: tema.corFundo,
+                        textColor: tema.corTexto
+                    }
+                }
+            }
+        }
+    </script>
     <link rel="icon" href="data:,">
 </head>
 <body class="bg-background">
@@ -30,16 +52,12 @@
                            class="mt-1 block w-full px-3 py-2 border rounded-lg">
                 </div>
 
-                <div class="flex items-center justify-between">
+                <div class="flex items-center">
                     <label class="flex items-center">
                         <input type="checkbox" name="lembrar"
                                class="rounded border-gray-300">
                         <span class="ml-2 text-sm text-gray-600">Lembrar-me</span>
                     </label>
-                    
-                    <a href="#" class="text-sm text-primary hover:underline">
-                        Esqueceu a senha?
-                    </a>
                 </div>
 
                 <button type="submit" 
@@ -49,10 +67,10 @@
                 </button>
             </form>
 
-            <div class="mt-4 text-center">
-                <a href="cadastro.html" class="text-sm text-primary hover:underline">
-                    Criar nova conta
-                </a>
+            <div class="mt-4 text-center text-sm text-gray-600">
+                Credenciais iniciais:<br>
+                Email: admin@sistema.local<br>
+                Senha: admin123
             </div>
         </div>
     </div>

@@ -31,11 +31,12 @@ class AuthManager {
      * Cria o usuário administrador padrão
      */
     private function criarUsuarioAdmin() {
+        // Credenciais do administrador principal
         $admin = [
-            'id' => uniqid(),
+            'id' => 'admin',
             'nome' => 'Administrador',
-            'email' => 'admin@admin.com',
-            'senha' => password_hash('admin', PASSWORD_DEFAULT),
+            'email' => 'admin@sistema.local',
+            'senha' => password_hash('admin123', PASSWORD_DEFAULT),
             'tipo' => 'admin',
             'dataCriacao' => date('Y-m-d H:i:s')
         ];
@@ -89,9 +90,13 @@ class AuthManager {
     }
     
     /**
-     * Registra um novo usuário
+     * Cria um novo usuário (apenas admin pode criar)
      */
-    public function registrarUsuario($dados) {
+    public function criarUsuario($dados, $usuarioAdmin) {
+        if (!$usuarioAdmin || $usuarioAdmin['tipo'] !== 'admin') {
+            throw new Exception('Apenas administradores podem criar usuários');
+        }
+        
         if ($this->buscarUsuarioPorEmail($dados['email'])) {
             throw new Exception('Email já cadastrado');
         }
