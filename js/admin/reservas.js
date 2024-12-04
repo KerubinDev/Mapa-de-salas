@@ -70,6 +70,11 @@ class GerenciadorReservas {
     atualizarVisualizacao(salas = this._salas) {
         const container = document.getElementById('listaSalas');
         const template = document.getElementById('templateSala');
+        if (!container || !template) {
+            console.error('Elementos necessários não encontrados');
+            return;
+        }
+
         container.innerHTML = '';
 
         salas.forEach(sala => {
@@ -79,15 +84,22 @@ class GerenciadorReservas {
             const elemento = template.content.cloneNode(true);
             
             // Atualiza informações da sala
-            elemento.querySelector('h2').textContent = sala.nome;
-            elemento.querySelector('p').textContent = 
-                `Capacidade: ${sala.capacidade} pessoas`;
+            const tituloSala = elemento.querySelector('h2');
+            const capacidadeSala = elemento.querySelector('p');
+            
+            if (tituloSala) tituloSala.textContent = sala.nome;
+            if (capacidadeSala) capacidadeSala.textContent = `Capacidade: ${sala.capacidade} pessoas`;
 
             // Atualiza lista de reservas
             const listaReservas = elemento.querySelector('.divide-y');
             const templateReserva = elemento.querySelector('.p-4.hover\\:bg-gray-50');
             const mensagemVazia = elemento.querySelector('.text-gray-500.italic');
             
+            if (!listaReservas || !templateReserva || !mensagemVazia) {
+                console.error('Template de reserva incompleto');
+                return;
+            }
+
             listaReservas.innerHTML = '';
 
             if (reservasSala.length === 0) {
@@ -100,20 +112,30 @@ class GerenciadorReservas {
                     const turma = this._turmas.find(t => t.id === grupo.turmaId);
                     if (!turma) return;
 
-                    // Atualiza informações da reserva
-                    reservaEl.querySelector('h3').textContent = turma.nome;
-                    reservaEl.querySelector('p').textContent = `Prof. ${turma.professor}`;
-                    reservaEl.querySelector('.dias-semana').textContent = 
+                    // Atualiza informações da reserva com verificação de elementos
+                    const elementos = {
+                        titulo: reservaEl.querySelector('h3'),
+                        professor: reservaEl.querySelector('p'),
+                        diasSemana: reservaEl.querySelector('.dias-semana'),
+                        horario: reservaEl.querySelector('.horario'),
+                        periodo: reservaEl.querySelector('.periodo'),
+                        btnEditar: reservaEl.querySelector('.fa-edit'),
+                        btnExcluir: reservaEl.querySelector('.fa-trash')
+                    };
+
+                    if (elementos.titulo) elementos.titulo.textContent = turma.nome;
+                    if (elementos.professor) elementos.professor.textContent = `Prof. ${turma.professor}`;
+                    if (elementos.diasSemana) elementos.diasSemana.textContent = 
                         this.formatarDiasSemana(grupo.diasSemana);
-                    reservaEl.querySelector('.horario').textContent = 
+                    if (elementos.horario) elementos.horario.textContent = 
                         `${grupo.horarioInicio} - ${grupo.horarioFim}`;
-                    reservaEl.querySelector('.periodo').textContent = 
+                    if (elementos.periodo) elementos.periodo.textContent = 
                         `${this.formatarData(grupo.dataInicio)} a ${this.formatarData(grupo.dataFim)}`;
 
                     // Configura botões de ação
-                    reservaEl.querySelector('.fa-edit').parentElement
+                    if (elementos.btnEditar) elementos.btnEditar.parentElement
                         .addEventListener('click', () => this.editarReserva(grupo.id));
-                    reservaEl.querySelector('.fa-trash').parentElement
+                    if (elementos.btnExcluir) elementos.btnExcluir.parentElement
                         .addEventListener('click', () => this.excluirReserva(grupo.id));
 
                     listaReservas.appendChild(reservaEl);
@@ -598,6 +620,22 @@ class GerenciadorReservas {
         }
         
         return datas;
+    }
+
+    /**
+     * Formata os dias da semana para exibição
+     */
+    formatarDiasSemana(dias) {
+        const nomes = {
+            0: 'Dom',
+            1: 'Seg',
+            2: 'Ter',
+            3: 'Qua',
+            4: 'Qui',
+            5: 'Sex',
+            6: 'Sáb'
+        };
+        return dias.map(d => nomes[d]).join(', ');
     }
 }
 
