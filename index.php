@@ -32,6 +32,8 @@ if (preg_match('/\.(js|css|html)$/', $uri)) {
 
 // Mapeamento de rotas para arquivos PHP
 $rotas = [
+    'api/auth/login' => 'api/auth/login.php',
+    'api/auth/logout' => 'api/auth/logout.php',
     'api/sala' => 'api/sala.php',
     'api/turma' => 'api/turma.php',
     'api/reserva' => 'api/reserva.php'

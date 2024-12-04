@@ -31,7 +31,7 @@ class GerenciadorLogin {
                 lembrar: formData.get('lembrar') === 'on'
             };
 
-            const resposta = await fetch('api/auth/login.php', {
+            const resposta = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
