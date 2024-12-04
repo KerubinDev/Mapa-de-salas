@@ -1,19 +1,10 @@
 /**
- * Gerenciador de Autenticação
- * Responsável por gerenciar o login e sessão do usuário
+ * Gerenciador de Login
+ * Responsável por gerenciar a autenticação do usuário
  */
-class GerenciadorAutenticacao {
+class GerenciadorLogin {
     constructor() {
-        this._usuario = this.carregarSessao();
         this.configurarFormulario();
-    }
-
-    /**
-     * Carrega dados da sessão do localStorage
-     */
-    carregarSessao() {
-        const sessao = localStorage.getItem('sessao');
-        return sessao ? JSON.parse(sessao) : null;
     }
 
     /**
@@ -48,13 +39,18 @@ class GerenciadorAutenticacao {
                 body: JSON.stringify(dados)
             });
 
+            const resultado = await resposta.json();
+
             if (!resposta.ok) {
-                const erro = await resposta.json();
-                throw new Error(erro.erro || 'Erro ao realizar login');
+                throw new Error(resultado.erro || 'Erro ao realizar login');
             }
 
-            const usuario = await resposta.json();
-            this.iniciarSessao(usuario, dados.lembrar);
+            // Armazena os dados do usuário
+            if (dados.lembrar) {
+                localStorage.setItem('usuario', JSON.stringify(resultado));
+            } else {
+                sessionStorage.setItem('usuario', JSON.stringify(resultado));
+            }
             
             // Redireciona para o painel administrativo
             window.location.href = 'admin/';
@@ -62,45 +58,6 @@ class GerenciadorAutenticacao {
             console.error('Erro no login:', erro);
             this.mostrarErro(erro.message);
         }
-    }
-
-    /**
-     * Inicia a sessão do usuário
-     */
-    iniciarSessao(usuario, lembrar) {
-        this._usuario = usuario;
-        if (lembrar) {
-            localStorage.setItem('sessao', JSON.stringify(usuario));
-        } else {
-            sessionStorage.setItem('sessao', JSON.stringify(usuario));
-        }
-    }
-
-    /**
-     * Encerra a sessão do usuário
-     */
-    async encerrarSessao() {
-        try {
-            await fetch('api/auth/logout.php', { method: 'POST' });
-        } catch (erro) {
-            console.error('Erro ao fazer logout:', erro);
-        } finally {
-            this._usuario = null;
-            localStorage.removeItem('sessao');
-            sessionStorage.removeItem('sessao');
-            window.location.href = '/login.html';
-        }
-    }
-
-    /**
-     * Verifica se o usuário está autenticado
-     */
-    verificarAutenticacao() {
-        if (!this._usuario) {
-            window.location.href = '/login.html';
-            return false;
-        }
-        return true;
     }
 
     /**
@@ -124,4 +81,6 @@ class GerenciadorAutenticacao {
 }
 
 // Inicializa o gerenciador quando a página carregar
-window.gerenciadorAuth = new GerenciadorAutenticacao(); 
+document.addEventListener('DOMContentLoaded', () => {
+    new GerenciadorLogin();
+}); 

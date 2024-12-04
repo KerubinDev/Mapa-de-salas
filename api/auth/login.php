@@ -6,12 +6,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     header('Access-Control-Allow-Origin: *');
     header('Access-Control-Allow-Methods: POST, OPTIONS');
     header('Access-Control-Allow-Headers: Content-Type');
+    header('Content-Type: application/json');
     exit(0);
 }
 
 // Verifica se é uma requisição POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    responderErro('Método não permitido', 405);
+    http_response_code(405);
+    echo json_encode(['erro' => 'Método não permitido']);
+    exit;
 }
 
 try {
@@ -26,7 +29,8 @@ try {
     $auth = AuthManager::getInstance();
     $usuario = $auth->login($dados['email'], $dados['senha']);
     
-    responderJson($usuario);
+    echo json_encode($usuario);
 } catch (Exception $e) {
-    responderErro($e->getMessage(), 401);
+    http_response_code(401);
+    echo json_encode(['erro' => $e->getMessage()]);
 } 
