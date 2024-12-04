@@ -4,6 +4,13 @@
  */
 class GerenciadorLogs {
     constructor() {
+        // Verifica se está autenticado e é admin
+        const usuario = window.auth.getUsuario();
+        if (!usuario || usuario.tipo !== 'admin') {
+            window.location.href = '/login.html';
+            return;
+        }
+
         this._logs = [];
         this._usuarios = [];
         this._filtros = {

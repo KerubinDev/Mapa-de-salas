@@ -5,28 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Logs do Sistema - Sistema de Gestão de Salas</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        // Carrega as configurações de tema do localStorage
-        const tema = JSON.parse(localStorage.getItem('tema')) || {
-            corPrimaria: '#1d4ed8',
-            corSecundaria: '#60a5fa',
-            corFundo: '#f9fafb',
-            corTexto: '#111827'
-        };
-
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: tema.corPrimaria,
-                        secondary: tema.corSecundaria,
-                        background: tema.corFundo,
-                        textColor: tema.corTexto
-                    }
-                }
-            }
-        }
-    </script>
     <link rel="icon" href="data:,">
 </head>
 <body class="bg-background">
@@ -37,7 +15,6 @@
                 <h1 class="text-2xl font-bold">Logs do Sistema</h1>
                 <div class="space-x-4">
                     <a href="adminpanel.html" class="hover:underline">Dashboard</a>
-                    <a href="usuarios.html" class="hover:underline">Usuários</a>
                     <a href="salas.html" class="hover:underline">Salas</a>
                     <a href="reservas.html" class="hover:underline">Reservas</a>
                     <a href="configuracoes.html" class="hover:underline">Configurações</a>
@@ -54,86 +31,84 @@
     <!-- Conteúdo Principal -->
     <main class="container mx-auto px-4 py-8">
         <!-- Filtros -->
-        <div class="bg-white p-6 rounded-lg shadow mb-6">
-            <h2 class="text-lg font-bold mb-4">Filtros</h2>
-            <form id="formFiltros" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <form id="formFiltros" class="mb-8 bg-white p-4 rounded-lg shadow">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
                         Data Início
                     </label>
-                    <input type="date" name="dataInicio"
-                           class="mt-1 block w-full px-3 py-2 border rounded-lg">
+                    <input type="date" name="dataInicio" 
+                           class="w-full px-3 py-2 border rounded-lg">
                 </div>
-
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
                         Data Fim
                     </label>
-                    <input type="date" name="dataFim"
-                           class="mt-1 block w-full px-3 py-2 border rounded-lg">
+                    <input type="date" name="dataFim" 
+                           class="w-full px-3 py-2 border rounded-lg">
                 </div>
-
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
                         Usuário
                     </label>
-                    <select name="usuarioId"
-                            class="mt-1 block w-full px-3 py-2 border rounded-lg">
-                        <option value="">Todos</option>
+                    <select name="usuarioId" class="w-full px-3 py-2 border rounded-lg">
+                        <option value="">Todos os usuários</option>
                     </select>
                 </div>
-
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">
                         Ação
                     </label>
-                    <select name="acao"
-                            class="mt-1 block w-full px-3 py-2 border rounded-lg">
-                        <option value="">Todas</option>
+                    <select name="acao" class="w-full px-3 py-2 border rounded-lg">
+                        <option value="">Todas as ações</option>
                         <option value="login">Login</option>
                         <option value="logout">Logout</option>
                         <option value="criar">Criação</option>
                         <option value="editar">Edição</option>
                         <option value="excluir">Exclusão</option>
+                        <option value="backup">Backup</option>
                     </select>
                 </div>
-            </form>
-        </div>
+            </div>
+        </form>
 
-        <!-- Lista de Logs -->
-        <div class="bg-white rounded-lg shadow overflow-hidden">
-            <table class="w-full">
+        <!-- Tabela de Logs -->
+        <div class="bg-white shadow overflow-hidden rounded-lg">
+            <table class="min-w-full divide-y divide-gray-200">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium 
+                                             text-gray-500 uppercase tracking-wider">
                             Data/Hora
                         </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium 
+                                             text-gray-500 uppercase tracking-wider">
                             Usuário
                         </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium 
+                                             text-gray-500 uppercase tracking-wider">
                             Ação
                         </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium 
+                                             text-gray-500 uppercase tracking-wider">
                             Detalhes
                         </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                        <th scope="col" class="px-6 py-3 text-left text-xs font-medium 
+                                             text-gray-500 uppercase tracking-wider">
                             IP
                         </th>
                     </tr>
                 </thead>
-                <tbody id="listaLogs">
+                <tbody class="bg-white divide-y divide-gray-200" id="listaLogs">
                     <!-- Será preenchido via JavaScript -->
                 </tbody>
             </table>
         </div>
     </main>
 
-    <!-- Font Awesome para ícones -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    
     <!-- Scripts -->
     <script src="/js/temas.js"></script>
+    <script src="/js/auth.js"></script>  <!-- Deve vir antes do logs.js -->
     <script src="/js/admin/logs.js"></script>
 </body>
 </html> 
