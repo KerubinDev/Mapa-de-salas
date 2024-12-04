@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gestão de Salas</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="icon" href="data:,">
+</head>
+<body class="bg-gray-50">
+    <!-- Cabeçalho -->
+    <header class="bg-blue-600 text-white shadow-lg">
+        <nav class="container mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <h1 class="text-2xl font-bold">Sistema de Gestão de Salas</h1>
+                <div class="space-x-4">
+                    <button onclick="mostrarModal('modalSala')" 
+                            class="bg-white text-blue-600 px-4 py-2 rounded-lg 
+                                   hover:bg-blue-50 transition">
+                        Nova Sala
+                    </button>
+                    <button onclick="mostrarModal('modalTurma')"
+                            class="bg-white text-blue-600 px-4 py-2 rounded-lg 
+                                   hover:bg-blue-50 transition">
+                        Nova Turma
+                    </button>
+                    <button onclick="mostrarModal('modalReserva')"
+                            class="bg-white text-blue-600 px-4 py-2 rounded-lg 
+                                   hover:bg-blue-50 transition">
+                        Nova Reserva
+                    </button>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Conteúdo Principal -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- Filtros -->
+        <div class="mb-8 bg-white p-4 rounded-lg shadow">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <input type="text" id="pesquisa" 
+                           placeholder="Pesquisar salas ou turmas..."
+                           class="w-full px-4 py-2 border rounded-lg">
+                </div>
+                <div>
+                    <select id="filtroTurno" 
+                            class="w-full px-4 py-2 border rounded-lg">
+                        <option value="">Todos os Turnos</option>
+                        <option value="manha">Manhã</option>
+                        <option value="tarde">Tarde</option>
+                        <option value="noite">Noite</option>
+                    </select>
+                </div>
+                <div>
+                    <select id="filtroCapacidade" 
+                            class="w-full px-4 py-2 border rounded-lg">
+                        <option value="">Todas as Capacidades</option>
+                        <option value="20">Até 20 pessoas</option>
+                        <option value="40">Até 40 pessoas</option>
+                        <option value="60">Até 60 pessoas</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grade de Horários -->
+        <div class="bg-white p-4 rounded-lg shadow overflow-x-auto">
+            <table id="tabelaHorarios" class="w-full">
+                <thead>
+                    <tr class="bg-gray-50">
+                        <th class="px-4 py-2 border">Horário</th>
+                        <th class="px-4 py-2 border">Segunda</th>
+                        <th class="px-4 py-2 border">Terça</th>
+                        <th class="px-4 py-2 border">Quarta</th>
+                        <th class="px-4 py-2 border">Quinta</th>
+                        <th class="px-4 py-2 border">Sexta</th>
+                    </tr>
+                </thead>
+                <tbody id="corpoTabela">
+                    <!-- Será preenchido via JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- Modal de Cadastro de Sala -->
+    <div id="modalSala" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 
+                               overflow-y-auto h-full w-full">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md 
+                    bg-white">
+            <h3 class="text-lg font-bold mb-4">Cadastrar Nova Sala</h3>
+            <form id="formSala" onsubmit="cadastrarSala(event)">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">
+                        Nome da Sala
+                    </label>
+                    <input type="text" name="nomeSala" required
+                           class="w-full px-3 py-2 border rounded-lg">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">
+                        Capacidade
+                    </label>
+                    <input type="number" name="capacidade" required
+                           class="w-full px-3 py-2 border rounded-lg">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">
+                        Descrição
+                    </label>
+                    <textarea name="descricao" 
+                              class="w-full px-3 py-2 border rounded-lg"></textarea>
+                </div>
+                <div class="flex justify-end">
+                    <button type="button" onclick="fecharModal('modalSala')"
+                            class="mr-2 px-4 py-2 bg-gray-200 rounded-lg">
+                        Cancelar
+                    </button>
+                    <button type="submit" 
+                            class="px-4 py-2 bg-blue-600 text-white rounded-lg">
+                        Salvar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Atualizando o Modal de Cadastro de Turma -->
+    <div id="modalTurma" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 
+                                overflow-y-auto h-full w-full">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md 
+                    bg-white">
+            <h3 class="text-lg font-bold mb-4">Cadastrar Nova Turma</h3>
+            <form id="formTurma" onsubmit="cadastrarTurma(event)">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">
+                        Nome da Turma
+                    </label>
+                    <input type="text" name="nomeTurma" required
+                           class="w-full px-3 py-2 border rounded-lg">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">
+                        Professor Responsável
+                    </label>
+                    <input type="text" name="professor" required
+                           class="w-full px-3 py-2 border rounded-lg">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">
+                        Número de Alunos
+                    </label>
+                    <input type="number" name="numeroAlunos" required
+                           class="w-full px-3 py-2 border rounded-lg">
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">
+                        Turno
+                    </label>
+                    <select name="turno" required class="w-full px-3 py-2 border rounded-lg">
+                        <option value="manha">Manhã</option>
+                        <option value="tarde">Tarde</option>
+                        <option value="noite">Noite</option>
+                    </select>
+                </div>
+                <div class="flex justify-end">
+                    <button type="button" onclick="fecharModal('modalTurma')"
+                            class="mr-2 px-4 py-2 bg-gray-200 rounded-lg">
+                        Cancelar
+                    </button>
+                    <button type="submit" 
+                            class="px-4 py-2 bg-blue-600 text-white rounded-lg">
+                        Salvar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal de Reserva -->
+    <div id="modalReserva" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 
+                                  overflow-y-auto h-full w-full">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md 
+                    bg-white">
+            <h3 class="text-lg font-bold mb-4">Nova Reserva de Sala</h3>
+            <form id="formReserva" onsubmit="cadastrarReserva(event)">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">
+                        Sala
+                    </label>
+                    <select name="salaId" required 
+                            class="w-full px-3 py-2 border rounded-lg">
+                        <!-- Será preenchido via JavaScript -->
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">
+                        Turma
+                    </label>
+                    <select name="turmaId" required 
+                            class="w-full px-3 py-2 border rounded-lg">
+                        <!-- Será preenchido via JavaScript -->
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">
+                        Dia da Semana
+                    </label>
+                    <select name="dia" required class="w-full px-3 py-2 border rounded-lg">
+                        <option value="segunda">Segunda-feira</option>
+                        <option value="terca">Terça-feira</option>
+                        <option value="quarta">Quarta-feira</option>
+                        <option value="quinta">Quinta-feira</option>
+                        <option value="sexta">Sexta-feira</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">
+                        Horário
+                    </label>
+                    <select name="horario" required 
+                            class="w-full px-3 py-2 border rounded-lg">
+                        <option value="07:30 - 08:20">07:30 - 08:20</option>
+                        <option value="08:20 - 09:10">08:20 - 09:10</option>
+                        <option value="09:10 - 10:00">09:10 - 10:00</option>
+                        <option value="10:20 - 11:10">10:20 - 11:10</option>
+                        <option value="11:10 - 12:00">11:10 - 12:00</option>
+                        <option value="13:30 - 14:20">13:30 - 14:20</option>
+                        <option value="14:20 - 15:10">14:20 - 15:10</option>
+                        <option value="15:10 - 16:00">15:10 - 16:00</option>
+                        <option value="16:20 - 17:10">16:20 - 17:10</option>
+                        <option value="17:10 - 18:00">17:10 - 18:00</option>
+                        <option value="19:00 - 19:50">19:00 - 19:50</option>
+                        <option value="19:50 - 20:40">19:50 - 20:40</option>
+                        <option value="20:40 - 21:30">20:40 - 21:30</option>
+                        <option value="21:40 - 22:30">21:40 - 22:30</option>
+                    </select>
+                </div>
+                <div class="flex justify-end">
+                    <button type="button" onclick="fecharModal('modalReserva')"
+                            class="mr-2 px-4 py-2 bg-gray-200 rounded-lg">
+                        Cancelar
+                    </button>
+                    <button type="submit" 
+                            class="px-4 py-2 bg-blue-600 text-white rounded-lg">
+                        Reservar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/main.js"></script>
+</body>
+</html>
