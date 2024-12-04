@@ -34,24 +34,16 @@ class GerenciadorConfiguracoes {
      */
     async carregarDados() {
         try {
+            const headers = window.auth.getHeaders();
+            
             const [configResp, logsResp] = await Promise.all([
-                fetch('../api/configuracoes.php', {
-                    headers: {
-                        'Accept': 'application/json',
-                        'Authorization': `Bearer ${this._usuarioAtual.token}`
-                    }
-                }),
-                fetch('../api/auth/logs.php', {
-                    headers: {
-                        'Accept': 'application/json',
-                        'Authorization': `Bearer ${this._usuarioAtual.token}`
-                    }
-                })
+                fetch('../api/configuracoes.php', { headers }),
+                fetch('../api/auth/logs.php', { headers })
             ]);
 
             if (!configResp.ok || !logsResp.ok) {
-                const configErro = await configResp.json();
-                const logsErro = await logsResp.json();
+                const configErro = await configResp.json().catch(() => ({}));
+                const logsErro = await logsResp.json().catch(() => ({}));
                 throw new Error(configErro.erro || logsErro.erro || 'Erro ao carregar dados');
             }
 
@@ -59,12 +51,14 @@ class GerenciadorConfiguracoes {
             this._logs = await logsResp.json();
         } catch (erro) {
             console.error('Erro ao carregar dados:', erro);
-            this.mostrarErro('Não foi possível carregar as configurações');
             
-            // Se for erro de autenticação, redireciona para login
-            if (erro.message.includes('Não autorizado')) {
+            if (erro.message.includes('Não autorizado') || 
+                erro.message.includes('Token')) {
                 window.location.href = '/login.html';
+                return;
             }
+            
+            this.mostrarErro('Não foi possível carregar as configurações');
         }
     }
 
@@ -249,9 +243,7 @@ class GerenciadorConfiguracoes {
 
             const resposta = await fetch('../api/configuracoes.php', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: window.auth.getHeaders(),
                 body: JSON.stringify(dados)
             });
 

@@ -8,6 +8,16 @@ class Auth {
     }
 
     /**
+     * Retorna os headers padrão para requisições autenticadas
+     */
+    getHeaders() {
+        return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${this._usuario?.token || ''}`
+        };
+    }
+
+    /**
      * Verifica se o usuário está autenticado
      */
     verificarAutenticacao() {
