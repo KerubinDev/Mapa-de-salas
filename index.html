@@ -51,23 +51,65 @@
     <main class="container mx-auto px-4 py-8">
         <!-- Filtros Básicos -->
         <div class="mb-8 bg-white p-4 rounded-lg shadow">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                     <input type="text" id="pesquisaSala" 
                            placeholder="Pesquisar sala..."
                            class="w-full px-4 py-2 border rounded-lg">
                 </div>
                 <div>
-                    <input type="date" id="pesquisaData"
-                           class="w-full px-4 py-2 border rounded-lg">
+                    <select id="filtroDiaSemana" 
+                            class="w-full px-4 py-2 border rounded-lg">
+                        <option value="">Todos os Dias</option>
+                        <option value="1">Segunda-feira</option>
+                        <option value="2">Terça-feira</option>
+                        <option value="3">Quarta-feira</option>
+                        <option value="4">Quinta-feira</option>
+                        <option value="5">Sexta-feira</option>
+                        <option value="6">Sábado</option>
+                        <option value="0">Domingo</option>
+                    </select>
+                </div>
+                <div>
+                    <select id="filtroHorario" 
+                            class="w-full px-4 py-2 border rounded-lg">
+                        <option value="">Todos os Horários</option>
+                        <option value="manha">Manhã (7h às 12h)</option>
+                        <option value="tarde">Tarde (13h às 18h)</option>
+                        <option value="noite">Noite (19h às 22h)</option>
+                    </select>
                 </div>
             </div>
         </div>
 
-        <!-- Lista de Salas e Horários -->
+        <!-- Lista de Salas -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
              id="listaSalas">
-            <!-- Será preenchido via JavaScript -->
+            <!-- Template de Sala -->
+            <template id="templateSala">
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <div class="p-4 bg-primary text-white">
+                        <h2 class="text-lg font-bold">Nome da Sala</h2>
+                        <p class="text-sm opacity-90">Capacidade: XX pessoas</p>
+                    </div>
+                    <div class="p-4">
+                        <h3 class="font-bold mb-2">Horários Reservados:</h3>
+                        <div class="space-y-2 reservas-lista">
+                            <!-- Template de Reserva -->
+                            <div class="p-2 bg-gray-50 rounded">
+                                <div class="font-medium">Turma XXXXX</div>
+                                <div class="text-sm text-gray-600">
+                                    <span class="dias-semana">Seg, Qua, Sex</span> •
+                                    <span class="horario">19:00 - 22:00</span>
+                                </div>
+                                <div class="text-sm text-gray-500">
+                                    <span class="periodo">05/03/2024 a 05/12/2024</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </template>
         </div>
     </main>
 
