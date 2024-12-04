@@ -52,6 +52,18 @@ class GerenciadorReservas {
         // Botão de logout
         document.getElementById('btnSair')
             .addEventListener('click', () => window.auth.logout());
+
+        // Botão de selecionar todos os dias
+        document.getElementById('btnSelecionarTodos')
+            .addEventListener('click', () => this.selecionarTodosDias());
+
+        // Validação de datas
+        document.querySelector('input[name="dataFim"]')
+            .addEventListener('change', (e) => this.validarDatas(e));
+        
+        // Validação de horários
+        document.querySelector('input[name="horarioFim"]')
+            .addEventListener('change', (e) => this.validarHorarios(e));
     }
 
     /**
@@ -238,45 +250,63 @@ class GerenciadorReservas {
         evento.preventDefault();
         
         const form = evento.target;
-        const dados = {
-            data: form.data.value,
-            horario: form.horario.value,
+        const diasSemana = Array.from(form.querySelectorAll('input[name="diasSemana"]:checked'))
+            .map(cb => parseInt(cb.value));
+
+        if (diasSemana.length === 0) {
+            this.mostrarErro('Selecione pelo menos um dia da semana');
+            return;
+        }
+
+        const dadosBase = {
             salaId: form.salaId.value,
-            turmaId: form.turmaId.value
+            turmaId: form.turmaId.value,
+            horarioInicio: form.horarioInicio.value,
+            horarioFim: form.horarioFim.value,
+            dataInicio: form.dataInicio.value,
+            dataFim: form.dataFim.value,
+            diasSemana: diasSemana
         };
 
-        // Validações adicionais
-        if (!this.validarHorario(dados.horario)) {
-            this.mostrarErro('Horário inválido');
-            return;
-        }
-
-        if (await this.verificarConflito(dados, form.id.value)) {
-            this.mostrarErro('Já existe uma reserva para este horário');
-            return;
-        }
+        // Gera todas as datas de reserva
+        const datas = this.gerarDatasReserva(
+            dadosBase.dataInicio,
+            dadosBase.dataFim,
+            diasSemana
+        );
 
         try {
-            const url = '../api/reserva.php' + (form.id.value ? `?id=${form.id.value}` : '');
-            const metodo = form.id.value ? 'PUT' : 'POST';
+            // Verifica conflitos para todas as datas
+            for (const data of datas) {
+                const temConflito = await this.verificarConflito({
+                    ...dadosBase,
+                    data: data
+                });
 
-            const resposta = await fetch(url, {
-                method: metodo,
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(dados)
-            });
-
-            if (!resposta.ok) {
-                const erro = await resposta.json();
-                throw new Error(erro.erro || 'Erro ao salvar reserva');
+                if (temConflito) {
+                    throw new Error(`Existe conflito de horário para o dia ${this.formatarData(data)}`);
+                }
             }
 
+            // Cria as reservas para todas as datas
+            const promessas = datas.map(data => 
+                fetch('../api/reserva.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        ...dadosBase,
+                        data: data
+                    })
+                })
+            );
+
+            await Promise.all(promessas);
             await this.carregarDados();
             this.fecharModal();
         } catch (erro) {
-            console.error('Erro ao salvar reserva:', erro);
+            console.error('Erro ao salvar reservas:', erro);
             this.mostrarErro(erro.message);
         }
     }
@@ -384,6 +414,61 @@ class GerenciadorReservas {
      */
     mostrarErro(mensagem) {
         alert(mensagem); // Podemos melhorar isso com um componente de toast
+    }
+
+    /**
+     * Seleciona ou desmarca todos os dias da semana
+     */
+    selecionarTodosDias() {
+        const checkboxes = document.querySelectorAll('input[name="diasSemana"]');
+        const todosChecados = Array.from(checkboxes).every(cb => cb.checked);
+        
+        checkboxes.forEach(cb => {
+            cb.checked = !todosChecados;
+        });
+    }
+
+    /**
+     * Valida as datas de início e fim
+     */
+    validarDatas(evento) {
+        const dataInicio = document.querySelector('input[name="dataInicio"]').value;
+        const dataFim = evento.target.value;
+
+        if (dataInicio && dataFim && dataFim < dataInicio) {
+            this.mostrarErro('A data de término deve ser posterior à data de início');
+            evento.target.value = '';
+        }
+    }
+
+    /**
+     * Valida os horários de início e fim
+     */
+    validarHorarios(evento) {
+        const horarioInicio = document.querySelector('input[name="horarioInicio"]').value;
+        const horarioFim = evento.target.value;
+
+        if (horarioInicio && horarioFim && horarioFim <= horarioInicio) {
+            this.mostrarErro('O horário de término deve ser posterior ao horário de início');
+            evento.target.value = '';
+        }
+    }
+
+    /**
+     * Gera todas as datas de reserva baseado no período e dias da semana
+     */
+    gerarDatasReserva(dataInicio, dataFim, diasSemana) {
+        const datas = [];
+        const inicio = new Date(dataInicio);
+        const fim = new Date(dataFim);
+        
+        for (let data = inicio; data <= fim; data.setDate(data.getDate() + 1)) {
+            if (diasSemana.includes(data.getDay())) {
+                datas.push(new Date(data).toISOString().split('T')[0]);
+            }
+        }
+        
+        return datas;
     }
 }
 
