@@ -35,12 +35,24 @@ class GerenciadorConfiguracoes {
     async carregarDados() {
         try {
             const [configResp, logsResp] = await Promise.all([
-                fetch('../api/configuracoes.php'),
-                fetch('../api/auth/logs.php')
+                fetch('../api/configuracoes.php', {
+                    headers: {
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${this._usuarioAtual.token}`
+                    }
+                }),
+                fetch('../api/auth/logs.php', {
+                    headers: {
+                        'Accept': 'application/json',
+                        'Authorization': `Bearer ${this._usuarioAtual.token}`
+                    }
+                })
             ]);
 
             if (!configResp.ok || !logsResp.ok) {
-                throw new Error('Erro ao carregar dados');
+                const configErro = await configResp.json();
+                const logsErro = await logsResp.json();
+                throw new Error(configErro.erro || logsErro.erro || 'Erro ao carregar dados');
             }
 
             this._configuracoes = await configResp.json();
@@ -48,6 +60,11 @@ class GerenciadorConfiguracoes {
         } catch (erro) {
             console.error('Erro ao carregar dados:', erro);
             this.mostrarErro('Não foi possível carregar as configurações');
+            
+            // Se for erro de autenticação, redireciona para login
+            if (erro.message.includes('Não autorizado')) {
+                window.location.href = '/login.html';
+            }
         }
     }
 

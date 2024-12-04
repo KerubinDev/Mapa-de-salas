@@ -43,22 +43,19 @@ if (!file_exists(ARQUIVO_DB)) {
  * Funções auxiliares
  */
 function lerDados() {
-    if (!file_exists(ARQUIVO_DB)) {
-        return [
-            'salas' => [],
-            'turmas' => [],
-            'reservas' => []
-        ];
+    $arquivo = __DIR__ . '/database.json';
+    if (!file_exists($arquivo)) {
+        return [];
     }
-    return json_decode(file_get_contents(ARQUIVO_DB), true);
+    return json_decode(file_get_contents($arquivo), true) ?: [];
 }
 
 function salvarDados($dados) {
-    file_put_contents(ARQUIVO_DB, json_encode($dados, JSON_PRETTY_PRINT));
+    $arquivo = __DIR__ . '/database.json';
+    return file_put_contents($arquivo, json_encode($dados, JSON_PRETTY_PRINT));
 }
 
-function responderJson($dados, $codigo = 200) {
-    http_response_code($codigo);
+function responderJson($dados) {
     echo json_encode($dados);
     exit;
 }
