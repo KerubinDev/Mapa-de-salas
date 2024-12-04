@@ -1,20 +1,18 @@
 /**
  * Gerenciador de Logs
- * Responsável por exibir e filtrar os logs do sistema
+ * Responsável por gerenciar a visualização dos logs do sistema
  */
 class GerenciadorLogs {
     constructor() {
         this._logs = [];
         this._usuarios = [];
-        this._usuarioAtual = JSON.parse(localStorage.getItem('usuario')) || 
-                            JSON.parse(sessionStorage.getItem('usuario'));
+        this._filtros = {
+            dataInicio: '',
+            dataFim: '',
+            usuarioId: '',
+            acao: ''
+        };
         
-        // Verifica se é admin
-        if (!this._usuarioAtual || this._usuarioAtual.tipo !== 'admin') {
-            window.location.href = '/admin/';
-            return;
-        }
-
         this.inicializar();
     }
 
@@ -22,42 +20,52 @@ class GerenciadorLogs {
      * Inicializa o gerenciador
      */
     async inicializar() {
-        await Promise.all([
-            this.carregarLogs(),
-            this.carregarUsuarios()
-        ]);
+        await this.carregarDados();
         this.configurarEventos();
-        this.preencherSelects();
         this.atualizarTabela();
     }
 
     /**
-     * Carrega os logs do servidor
+     * Carrega os dados necessários
      */
-    async carregarLogs(filtros = {}) {
+    async carregarDados() {
         try {
-            const params = new URLSearchParams(filtros);
-            const resposta = await fetch(`/api/auth/logs.php?${params}`);
-            if (!resposta.ok) throw new Error('Erro ao carregar logs');
+            const headers = window.auth.getHeaders();
+            
+            const [logsResp, usuariosResp] = await Promise.all([
+                fetch('../api/auth/logs.php', { headers }),
+                fetch('../api/auth/usuarios.php', { headers })
+            ]);
 
-            this._logs = await resposta.json();
+            if (!logsResp.ok || !usuariosResp.ok) {
+                const logsErro = await logsResp.text();
+                const usuariosErro = await usuariosResp.text();
+                
+                try {
+                    const logsJson = JSON.parse(logsErro);
+                    const usuariosJson = JSON.parse(usuariosErro);
+                    throw new Error(logsJson.erro || usuariosJson.erro || 'Erro ao carregar dados');
+                } catch (e) {
+                    console.error('Resposta não é JSON:', { logsErro, usuariosErro });
+                    throw new Error('Erro ao processar resposta do servidor');
+                }
+            }
+
+            this._logs = await logsResp.json();
+            this._usuarios = await usuariosResp.json();
+            
+            this.preencherFiltros();
         } catch (erro) {
-            console.error('Erro ao carregar logs:', erro);
+            console.error('Erro ao carregar dados:', erro);
+            
+            if (erro.message.includes('Não autorizado') || 
+                erro.message.includes('Token') ||
+                erro.message.includes('inválido')) {
+                window.location.href = '/login.html';
+                return;
+            }
+            
             this.mostrarErro('Não foi possível carregar os logs');
-        }
-    }
-
-    /**
-     * Carrega os usuários do sistema
-     */
-    async carregarUsuarios() {
-        try {
-            const resposta = await fetch('/api/auth/usuarios.php');
-            if (!resposta.ok) throw new Error('Erro ao carregar usuários');
-
-            this._usuarios = await resposta.json();
-        } catch (erro) {
-            console.error('Erro ao carregar usuários:', erro);
         }
     }
 

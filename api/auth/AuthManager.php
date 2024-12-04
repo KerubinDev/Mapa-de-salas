@@ -265,7 +265,7 @@ class AuthManager {
             return strcmp($b['data'], $a['data']);
         });
 
-        return $logs;
+        return array_values($logs);
     }
     
     /**
