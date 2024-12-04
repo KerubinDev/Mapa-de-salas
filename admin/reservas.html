@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gerenciar Reservas - Sistema de Gestão de Salas</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="../js/temas.js"></script>
+    <script src="/js/temas.js"></script>
     <link rel="icon" href="data:,">
 </head>
 <body class="bg-background">
@@ -34,14 +34,18 @@
         <div class="flex justify-between items-center mb-6">
             <div class="flex gap-4">
                 <input type="text" id="pesquisaReserva" 
-                       placeholder="Pesquisar reservas..."
+                       placeholder="Pesquisar..."
                        class="px-4 py-2 border rounded-lg w-64">
                 
-                <input type="date" id="filtroData"
-                       class="px-4 py-2 border rounded-lg">
-
                 <select id="filtroSala" class="px-4 py-2 border rounded-lg">
                     <option value="">Todas as Salas</option>
+                </select>
+
+                <select id="filtroPeriodo" class="px-4 py-2 border rounded-lg">
+                    <option value="">Todos os Períodos</option>
+                    <option value="atual">Período Atual</option>
+                    <option value="futuro">Reservas Futuras</option>
+                    <option value="passado">Reservas Passadas</option>
                 </select>
             </div>
 
@@ -52,32 +56,51 @@
             </button>
         </div>
 
-        <!-- Lista de Reservas -->
-        <div class="bg-white rounded-lg shadow overflow-hidden">
-            <table class="w-full">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                            Data
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                            Horário
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                            Sala
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                            Turma
-                        </th>
-                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                            Ações
-                        </th>
-                    </tr>
-                </thead>
-                <tbody id="listaReservas">
-                    <!-- Será preenchido via JavaScript -->
-                </tbody>
-            </table>
+        <!-- Lista de Salas com Reservas -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6" id="listaSalas">
+            <!-- Template de Sala -->
+            <template id="templateSala">
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <!-- Cabeçalho da Sala -->
+                    <div class="bg-primary text-white p-4">
+                        <h2 class="text-lg font-bold">Nome da Sala</h2>
+                        <p class="text-sm opacity-90">Capacidade: XX pessoas</p>
+                    </div>
+
+                    <!-- Lista de Reservas da Sala -->
+                    <div class="divide-y">
+                        <!-- Template de Reserva -->
+                        <div class="p-4 hover:bg-gray-50">
+                            <div class="flex justify-between items-start mb-2">
+                                <div>
+                                    <h3 class="font-medium">Nome da Turma</h3>
+                                    <p class="text-sm text-gray-600">Professor</p>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button class="text-blue-600 hover:text-blue-800">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                    <button class="text-red-600 hover:text-red-800">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="text-sm text-gray-600">
+                                <span class="dias-semana">Seg, Qua, Sex</span> •
+                                <span class="horario">19:00 - 22:00</span>
+                            </div>
+                            <div class="text-sm text-gray-500">
+                                <span class="periodo">05/03/2024 a 05/12/2024</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Mensagem de Nenhuma Reserva -->
+                    <div class="p-4 text-center text-gray-500 italic hidden">
+                        Nenhuma reserva encontrada
+                    </div>
+                </div>
+            </template>
         </div>
     </main>
 
@@ -212,7 +235,12 @@
         </div>
     </div>
 
-    <script src="../js/login.js"></script>
-    <script src="../js/admin/reservas.js"></script>
+    <!-- Font Awesome para ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    
+    <!-- Scripts -->
+    <script src="/js/temas.js"></script>
+    <script src="/js/auth.js"></script>
+    <script src="/js/admin/reservas.js"></script>
 </body>
 </html> 

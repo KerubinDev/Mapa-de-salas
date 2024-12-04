@@ -26,7 +26,7 @@ class GerenciadorReservas {
         await this.carregarDados();
         this.configurarEventos();
         this.preencherSelects();
-        this.atualizarTabela();
+        this.atualizarVisualizacao();
     }
 
     /**
@@ -43,11 +43,11 @@ class GerenciadorReservas {
 
         // Filtros
         document.getElementById('pesquisaReserva')
-            .addEventListener('input', () => this.filtrarReservas());
-        document.getElementById('filtroData')
-            .addEventListener('change', () => this.filtrarReservas());
+            .addEventListener('input', () => this.aplicarFiltros());
         document.getElementById('filtroSala')
-            .addEventListener('change', () => this.filtrarReservas());
+            .addEventListener('change', () => this.aplicarFiltros());
+        document.getElementById('filtroPeriodo')
+            .addEventListener('change', () => this.aplicarFiltros());
 
         // Botão de logout
         document.getElementById('btnSair')
@@ -57,13 +57,164 @@ class GerenciadorReservas {
         document.getElementById('btnSelecionarTodos')
             .addEventListener('click', () => this.selecionarTodosDias());
 
-        // Validação de datas
+        // Validações do formulário
         document.querySelector('input[name="dataFim"]')
             .addEventListener('change', (e) => this.validarDatas(e));
-        
-        // Validação de horários
         document.querySelector('input[name="horarioFim"]')
             .addEventListener('change', (e) => this.validarHorarios(e));
+    }
+
+    /**
+     * Atualiza a visualização das salas e suas reservas
+     */
+    atualizarVisualizacao(salas = this._salas) {
+        const container = document.getElementById('listaSalas');
+        const template = document.getElementById('templateSala');
+        container.innerHTML = '';
+
+        salas.forEach(sala => {
+            const reservasSala = this.agruparReservasSala(sala.id);
+            if (!this.passaNosFiltos(sala, reservasSala)) return;
+
+            const elemento = template.content.cloneNode(true);
+            
+            // Atualiza informações da sala
+            elemento.querySelector('h2').textContent = sala.nome;
+            elemento.querySelector('p').textContent = 
+                `Capacidade: ${sala.capacidade} pessoas`;
+
+            // Atualiza lista de reservas
+            const listaReservas = elemento.querySelector('.divide-y');
+            const templateReserva = elemento.querySelector('.p-4.hover\\:bg-gray-50');
+            const mensagemVazia = elemento.querySelector('.text-gray-500.italic');
+            
+            listaReservas.innerHTML = '';
+
+            if (reservasSala.length === 0) {
+                mensagemVazia.classList.remove('hidden');
+            } else {
+                mensagemVazia.classList.add('hidden');
+                
+                reservasSala.forEach(grupo => {
+                    const reservaEl = templateReserva.cloneNode(true);
+                    const turma = this._turmas.find(t => t.id === grupo.turmaId);
+                    if (!turma) return;
+
+                    // Atualiza informações da reserva
+                    reservaEl.querySelector('h3').textContent = turma.nome;
+                    reservaEl.querySelector('p').textContent = `Prof. ${turma.professor}`;
+                    reservaEl.querySelector('.dias-semana').textContent = 
+                        this.formatarDiasSemana(grupo.diasSemana);
+                    reservaEl.querySelector('.horario').textContent = 
+                        `${grupo.horarioInicio} - ${grupo.horarioFim}`;
+                    reservaEl.querySelector('.periodo').textContent = 
+                        `${this.formatarData(grupo.dataInicio)} a ${this.formatarData(grupo.dataFim)}`;
+
+                    // Configura botões de ação
+                    reservaEl.querySelector('.fa-edit').parentElement
+                        .addEventListener('click', () => this.editarReserva(grupo.id));
+                    reservaEl.querySelector('.fa-trash').parentElement
+                        .addEventListener('click', () => this.excluirReserva(grupo.id));
+
+                    listaReservas.appendChild(reservaEl);
+                });
+            }
+
+            container.appendChild(elemento);
+        });
+
+        if (container.children.length === 0) {
+            container.innerHTML = `
+                <div class="col-span-full bg-white p-8 rounded-lg shadow text-center">
+                    <p class="text-gray-500">Nenhuma sala encontrada</p>
+                </div>
+            `;
+        }
+    }
+
+    /**
+     * Agrupa as reservas de uma sala por período e horário
+     */
+    agruparReservasSala(salaId) {
+        const grupos = [];
+        const reservasSala = this._reservas.filter(r => r.salaId === salaId);
+
+        // Agrupa reservas por turma e horário
+        const reservasPorGrupo = {};
+        reservasSala.forEach(reserva => {
+            const chave = `${reserva.turmaId}-${reserva.horarioInicio}-${reserva.horarioFim}`;
+            if (!reservasPorGrupo[chave]) {
+                reservasPorGrupo[chave] = [];
+            }
+            reservasPorGrupo[chave].push(reserva);
+        });
+
+        // Para cada grupo, determina o período e dias da semana
+        Object.values(reservasPorGrupo).forEach(reservas => {
+            if (reservas.length === 0) return;
+
+            const datas = reservas.map(r => new Date(r.data));
+            const dataInicio = new Date(Math.min(...datas));
+            const dataFim = new Date(Math.max(...datas));
+            
+            const diasSemana = [...new Set(
+                reservas.map(r => new Date(r.data).getDay())
+            )].sort();
+
+            grupos.push({
+                id: reservas[0].id, // ID da primeira reserva do grupo
+                turmaId: reservas[0].turmaId,
+                horarioInicio: reservas[0].horarioInicio,
+                horarioFim: reservas[0].horarioFim,
+                dataInicio: dataInicio.toISOString().split('T')[0],
+                dataFim: dataFim.toISOString().split('T')[0],
+                diasSemana: diasSemana
+            });
+        });
+
+        return grupos;
+    }
+
+    /**
+     * Verifica se a sala e suas reservas passam nos filtros atuais
+     */
+    passaNosFiltos(sala, reservas) {
+        const termo = document.getElementById('pesquisaReserva').value.toLowerCase();
+        const salaId = document.getElementById('filtroSala').value;
+        const periodo = document.getElementById('filtroPeriodo').value;
+
+        // Filtro de sala
+        if (salaId && sala.id !== salaId) return false;
+
+        // Filtro de pesquisa
+        if (termo) {
+            const matchSala = sala.nome.toLowerCase().includes(termo);
+            const matchTurma = reservas.some(grupo => {
+                const turma = this._turmas.find(t => t.id === grupo.turmaId);
+                return turma && (
+                    turma.nome.toLowerCase().includes(termo) ||
+                    turma.professor.toLowerCase().includes(termo)
+                );
+            });
+            if (!matchSala && !matchTurma) return false;
+        }
+
+        // Filtro de período
+        if (periodo) {
+            const hoje = new Date().toISOString().split('T')[0];
+            return reservas.some(grupo => {
+                switch (periodo) {
+                    case 'atual':
+                        return grupo.dataInicio <= hoje && grupo.dataFim >= hoje;
+                    case 'futuro':
+                        return grupo.dataInicio > hoje;
+                    case 'passado':
+                        return grupo.dataFim < hoje;
+                }
+            });
+        }
+
+        return true;
     }
 
     /**
@@ -127,81 +278,6 @@ class GerenciadorReservas {
                 </option>
             `;
         });
-    }
-
-    /**
-     * Atualiza a tabela de reservas
-     */
-    atualizarTabela(reservas = this._reservas) {
-        const tbody = document.getElementById('listaReservas');
-        tbody.innerHTML = '';
-
-        reservas.forEach(reserva => {
-            const sala = this._salas.find(s => s.id === reserva.salaId);
-            const turma = this._turmas.find(t => t.id === reserva.turmaId);
-
-            if (!sala || !turma) return;
-
-            const tr = document.createElement('tr');
-            tr.className = 'hover:bg-gray-50';
-            
-            tr.innerHTML = `
-                <td class="px-6 py-4 whitespace-nowrap">
-                    ${this.formatarData(reserva.data)}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                    ${reserva.horario}
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap">
-                    ${sala.nome}
-                </td>
-                <td class="px-6 py-4">
-                    ${turma.nome}<br>
-                    <span class="text-sm text-gray-500">
-                        Prof. ${turma.professor}
-                    </span>
-                </td>
-                <td class="px-6 py-4 whitespace-nowrap text-right">
-                    <button onclick="gerenciadorReservas.editarReserva('${reserva.id}')"
-                            class="text-blue-600 hover:text-blue-900">
-                        Editar
-                    </button>
-                    <button onclick="gerenciadorReservas.excluirReserva('${reserva.id}')"
-                            class="ml-4 text-red-600 hover:text-red-900">
-                        Excluir
-                    </button>
-                </td>
-            `;
-
-            tbody.appendChild(tr);
-        });
-    }
-
-    /**
-     * Filtra as reservas com base nos critérios
-     */
-    filtrarReservas() {
-        const termo = document.getElementById('pesquisaReserva').value.toLowerCase();
-        const data = document.getElementById('filtroData').value;
-        const salaId = document.getElementById('filtroSala').value;
-
-        const reservasFiltradas = this._reservas.filter(reserva => {
-            const sala = this._salas.find(s => s.id === reserva.salaId);
-            const turma = this._turmas.find(t => t.id === reserva.turmaId);
-
-            if (!sala || !turma) return false;
-
-            const matchTermo = sala.nome.toLowerCase().includes(termo) ||
-                             turma.nome.toLowerCase().includes(termo) ||
-                             turma.professor.toLowerCase().includes(termo);
-            
-            const matchData = !data || reserva.data === data;
-            const matchSala = !salaId || reserva.salaId === salaId;
-
-            return matchTermo && matchData && matchSala;
-        });
-
-        this.atualizarTabela(reservasFiltradas);
     }
 
     /**
