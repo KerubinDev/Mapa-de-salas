@@ -4,10 +4,16 @@
  */
 class GerenciadorSalas {
     constructor() {
-        // Verifica autenticação
-        if (!window.gerenciadorAuth.verificarAutenticacao()) return;
-
         this._salas = [];
+        this._usuarioAtual = JSON.parse(localStorage.getItem('usuario')) || 
+                            JSON.parse(sessionStorage.getItem('usuario'));
+        
+        // Verifica se está autenticado
+        if (!this._usuarioAtual) {
+            window.location.href = '/login.html';
+            return;
+        }
+
         this.inicializar();
     }
 

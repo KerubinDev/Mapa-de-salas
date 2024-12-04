@@ -5,7 +5,10 @@
 class GerenciadorTemas {
     constructor() {
         this._temaAtual = this.carregarTema();
-        this.aplicarTema(this._temaAtual);
+        // Só aplica o tema quando o DOM estiver pronto
+        document.addEventListener('DOMContentLoaded', () => {
+            this.aplicarTema(this._temaAtual);
+        });
     }
 
     /**
@@ -43,8 +46,10 @@ class GerenciadorTemas {
             }
         };
 
-        // Força atualização dos estilos
-        document.body.className = document.body.className;
+        // Força atualização dos estilos se o body existir
+        if (document.body) {
+            document.body.className = document.body.className;
+        }
     }
 
     /**
