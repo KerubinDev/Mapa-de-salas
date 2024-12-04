@@ -4,12 +4,18 @@
  */
 class GerenciadorReservas {
     constructor() {
-        // Verifica autenticação
-        if (!window.gerenciadorAuth.verificarAutenticacao()) return;
-
         this._reservas = [];
         this._salas = [];
         this._turmas = [];
+        this._usuarioAtual = JSON.parse(localStorage.getItem('usuario')) || 
+                            JSON.parse(sessionStorage.getItem('usuario'));
+        
+        // Verifica se está autenticado
+        if (!this._usuarioAtual) {
+            window.location.href = '/login.html';
+            return;
+        }
+
         this.inicializar();
     }
 
@@ -21,30 +27,6 @@ class GerenciadorReservas {
         this.configurarEventos();
         this.preencherSelects();
         this.atualizarTabela();
-    }
-
-    /**
-     * Carrega todos os dados necessários
-     */
-    async carregarDados() {
-        try {
-            const [reservasResp, salasResp, turmasResp] = await Promise.all([
-                fetch('../api/reserva.php'),
-                fetch('../api/sala.php'),
-                fetch('../api/turma.php')
-            ]);
-
-            if (!reservasResp.ok || !salasResp.ok || !turmasResp.ok) {
-                throw new Error('Erro ao carregar dados');
-            }
-
-            this._reservas = await reservasResp.json();
-            this._salas = await salasResp.json();
-            this._turmas = await turmasResp.json();
-        } catch (erro) {
-            console.error('Erro ao carregar dados:', erro);
-            this.mostrarErro('Não foi possível carregar os dados');
-        }
     }
 
     /**
@@ -69,7 +51,31 @@ class GerenciadorReservas {
 
         // Botão de logout
         document.getElementById('btnSair')
-            .addEventListener('click', () => window.gerenciadorAuth.encerrarSessao());
+            .addEventListener('click', () => window.auth.logout());
+    }
+
+    /**
+     * Carrega todos os dados necessários
+     */
+    async carregarDados() {
+        try {
+            const [reservasResp, salasResp, turmasResp] = await Promise.all([
+                fetch('../api/reserva.php'),
+                fetch('../api/sala.php'),
+                fetch('../api/turma.php')
+            ]);
+
+            if (!reservasResp.ok || !salasResp.ok || !turmasResp.ok) {
+                throw new Error('Erro ao carregar dados');
+            }
+
+            this._reservas = await reservasResp.json();
+            this._salas = await salasResp.json();
+            this._turmas = await turmasResp.json();
+        } catch (erro) {
+            console.error('Erro ao carregar dados:', erro);
+            this.mostrarErro('Não foi possível carregar os dados');
+        }
     }
 
     /**
