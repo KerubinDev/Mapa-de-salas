@@ -5,7 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Configurações - Sistema de Gestão de Salas</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="../js/temas.js"></script>
+    <script>
+        // Carrega as configurações de tema do localStorage
+        const tema = JSON.parse(localStorage.getItem('tema')) || {
+            corPrimaria: '#1d4ed8',
+            corSecundaria: '#60a5fa',
+            corFundo: '#f9fafb',
+            corTexto: '#111827'
+        };
+
+        // Configura o Tailwind com as cores personalizadas
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: tema.corPrimaria,
+                        secondary: tema.corSecundaria,
+                        background: tema.corFundo,
+                        textColor: tema.corTexto
+                    }
+                }
+            }
+        }
+    </script>
     <link rel="icon" href="data:,">
 </head>
 <body class="bg-background">
@@ -85,7 +107,7 @@
         </div>
     </main>
 
-    <script src="../js/login.js"></script>
-    <script src="../js/configuracoes.js"></script>
+    <script src="/js/temas.js"></script>
+    <script src="/js/admin/configuracoes.js"></script>
 </body>
 </html> 

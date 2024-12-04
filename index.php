@@ -24,7 +24,9 @@ $uri = ltrim($uri, '/');
 if (preg_match('/\.(js|css|html)$/', $uri)) {
     $arquivo = __DIR__ . '/' . $uri;
     if (file_exists($arquivo)) {
-        header('Content-Type: ' . getMimeType($arquivo));
+        $mimeType = getMimeType($arquivo);
+        header('Content-Type: ' . $mimeType);
+        header('Cache-Control: no-cache');
         readfile($arquivo);
         exit;
     }
