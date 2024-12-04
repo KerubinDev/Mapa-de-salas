@@ -218,19 +218,31 @@ class GerenciadorReservas {
 
         // Define data mínima como hoje
         const hoje = new Date().toISOString().split('T')[0];
-        form.data.min = hoje;
+        const dataInicio = form.querySelector('input[name="dataInicio"]');
+        const dataFim = form.querySelector('input[name="dataFim"]');
+        dataInicio.min = hoje;
+        dataFim.min = hoje;
 
         // Se for edição, preenche os dados
         if (reserva) {
             titulo.textContent = 'Editar Reserva';
             form.id.value = reserva.id;
-            form.data.value = reserva.data;
-            form.horario.value = reserva.horario;
+            form.dataInicio.value = reserva.dataInicio;
+            form.dataFim.value = reserva.dataFim;
+            form.horarioInicio.value = reserva.horarioInicio;
+            form.horarioFim.value = reserva.horarioFim;
             form.salaId.value = reserva.salaId;
             form.turmaId.value = reserva.turmaId;
+
+            // Marca os dias da semana
+            reserva.diasSemana.forEach(dia => {
+                const checkbox = form.querySelector(`input[name="diasSemana"][value="${dia}"]`);
+                if (checkbox) checkbox.checked = true;
+            });
         } else {
             titulo.textContent = 'Nova Reserva';
-            form.data.value = hoje;
+            dataInicio.value = hoje;
+            dataFim.value = hoje;
         }
 
         modal.classList.remove('hidden');
@@ -315,31 +327,66 @@ class GerenciadorReservas {
      * Edita uma reserva existente
      */
     editarReserva(id) {
+        // Encontra a primeira reserva do grupo
         const reserva = this._reservas.find(r => r.id === id);
-        if (reserva) {
-            this.abrirModal(reserva);
-        }
+        if (!reserva) return;
+
+        // Encontra todas as reservas do mesmo grupo
+        const reservasGrupo = this._reservas.filter(r => 
+            r.salaId === reserva.salaId &&
+            r.turmaId === reserva.turmaId &&
+            r.horarioInicio === reserva.horarioInicio &&
+            r.horarioFim === reserva.horarioFim
+        );
+
+        // Determina o período e dias da semana
+        const datas = reservasGrupo.map(r => new Date(r.data));
+        const dataInicio = new Date(Math.min(...datas));
+        const dataFim = new Date(Math.max(...datas));
+        
+        const diasSemana = [...new Set(
+            reservasGrupo.map(r => new Date(r.data).getDay())
+        )];
+
+        // Abre o modal com os dados
+        this.abrirModal({
+            ...reserva,
+            dataInicio: dataInicio.toISOString().split('T')[0],
+            dataFim: dataFim.toISOString().split('T')[0],
+            diasSemana: diasSemana
+        });
     }
 
     /**
-     * Exclui uma reserva
+     * Exclui uma reserva ou grupo de reservas
      */
     async excluirReserva(id) {
-        if (!confirm('Tem certeza que deseja excluir esta reserva?')) return;
+        if (!confirm('Deseja excluir todas as reservas deste horário?')) return;
 
         try {
-            const resposta = await fetch(`../api/reserva.php?id=${id}`, {
-                method: 'DELETE'
-            });
+            // Encontra a primeira reserva do grupo
+            const reserva = this._reservas.find(r => r.id === id);
+            if (!reserva) return;
 
-            if (!resposta.ok) {
-                const erro = await resposta.json();
-                throw new Error(erro.erro || 'Erro ao excluir reserva');
-            }
+            // Encontra todas as reservas do mesmo grupo
+            const reservasGrupo = this._reservas.filter(r => 
+                r.salaId === reserva.salaId &&
+                r.turmaId === reserva.turmaId &&
+                r.horarioInicio === reserva.horarioInicio &&
+                r.horarioFim === reserva.horarioFim
+            );
 
+            // Exclui todas as reservas do grupo
+            const promessas = reservasGrupo.map(r => 
+                fetch(`../api/reserva.php?id=${r.id}`, {
+                    method: 'DELETE'
+                })
+            );
+
+            await Promise.all(promessas);
             await this.carregarDados();
         } catch (erro) {
-            console.error('Erro ao excluir reserva:', erro);
+            console.error('Erro ao excluir reservas:', erro);
             this.mostrarErro(erro.message);
         }
     }
