@@ -3,28 +3,82 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Área Administrativa - Sistema de Reservas</title>
-    <link rel="stylesheet" href="/css/style.css">
+    <title>Painel Administrativo - Sistema de Gestão de Salas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="../js/temas.js"></script>
 </head>
-<body>
-    <div id="app">
-        <div class="admin-container">
-            <h1>Área Administrativa</h1>
-            
-            <nav class="admin-nav">
-                <ul>
-                    <li><a href="#salas" class="active">Salas</a></li>
-                    <li><a href="#turmas">Turmas</a></li>
-                    <li><a href="#reservas">Reservas</a></li>
-                    <li><a href="#usuarios">Usuários</a></li>
+<body class="bg-background">
+    <!-- Cabeçalho -->
+    <header class="bg-primary text-white shadow-lg">
+        <nav class="container mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <h1 class="text-2xl font-bold">Painel Administrativo</h1>
+                <div class="space-x-4">
+                    <span id="nomeUsuario" class="text-sm"></span>
+                    <button id="btnSair" 
+                            class="bg-white text-primary px-4 py-2 rounded-lg 
+                                   hover:bg-opacity-90 transition">
+                        Sair
+                    </button>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Menu Lateral -->
+    <div class="flex">
+        <aside class="w-64 bg-white shadow-lg h-screen">
+            <nav class="p-4">
+                <ul class="space-y-2">
+                    <li>
+                        <a href="/admin/salas" 
+                           class="block p-2 hover:bg-gray-100 rounded-lg">
+                            Gerenciar Salas
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/admin/reservas" 
+                           class="block p-2 hover:bg-gray-100 rounded-lg">
+                            Gerenciar Reservas
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/admin/usuarios" 
+                           class="block p-2 hover:bg-gray-100 rounded-lg">
+                            Gerenciar Usuários
+                        </a>
+                    </li>
+                    <li>
+                        <a href="/admin/configuracoes" 
+                           class="block p-2 hover:bg-gray-100 rounded-lg">
+                            Configurações
+                        </a>
+                    </li>
                 </ul>
             </nav>
-            
-            <div id="conteudo">
-                <!-- O conteúdo será carregado dinamicamente -->
+        </aside>
+
+        <!-- Conteúdo Principal -->
+        <main class="flex-1 p-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Cards de Resumo -->
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-lg font-bold mb-2">Total de Salas</h3>
+                    <p class="text-3xl font-bold text-primary" id="totalSalas">0</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-lg font-bold mb-2">Reservas Ativas</h3>
+                    <p class="text-3xl font-bold text-primary" id="totalReservas">0</p>
+                </div>
+                <div class="bg-white p-6 rounded-lg shadow">
+                    <h3 class="text-lg font-bold mb-2">Usuários Ativos</h3>
+                    <p class="text-3xl font-bold text-primary" id="totalUsuarios">0</p>
+                </div>
             </div>
-        </div>
+        </main>
     </div>
-    <script src="/js/admin.js"></script>
+
+    <!-- Scripts -->
+    <script src="../js/admin/dashboard.js"></script>
 </body>
 </html> 

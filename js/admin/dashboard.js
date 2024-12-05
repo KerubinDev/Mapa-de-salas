@@ -1,98 +1,87 @@
 /**
- * Gerenciador do Dashboard
- * Responsável por gerenciar o painel administrativo
+ * @fileoverview Gerenciamento do dashboard administrativo
+ * @author Seu Nome
  */
-class DashboardAdmin {
+
+class GerenciadorDashboard {
     constructor() {
-        this.token = localStorage.getItem('token');
-        this.usuario = JSON.parse(localStorage.getItem('usuario'));
-        
-        if (!this.token || !this.usuario || this.usuario.tipo !== 'admin') {
-            window.location.href = '/login.html';
-            return;
-        }
-        
-        this.inicializar();
+        this._nomeUsuario = document.getElementById('nomeUsuario');
+        this._btnSair = document.getElementById('btnSair');
+        this._totalSalas = document.getElementById('totalSalas');
+        this._totalReservas = document.getElementById('totalReservas');
+        this._totalUsuarios = document.getElementById('totalUsuarios');
+
+        this._inicializarEventos();
+        this._verificarAutenticacao();
+        this._carregarDados();
     }
-    
-    async inicializar() {
+
+    /**
+     * Inicializa os eventos da página
+     * @private
+     */
+    _inicializarEventos() {
+        this._btnSair.addEventListener('click', () => this._realizarLogout());
+    }
+
+    /**
+     * Verifica se o usuário está autenticado
+     * @private
+     */
+    async _verificarAutenticacao() {
         try {
-            await this.carregarEstatisticas();
-            await this.carregarReservasRecentes();
-            this.configurarEventos();
+            const resposta = await fetch('/api/auth/perfil');
+            if (!resposta.ok) {
+                window.location.href = '/login.html';
+                return;
+            }
+            
+            const dados = await resposta.json();
+            this._nomeUsuario.textContent = dados.nome;
         } catch (erro) {
-            console.error('Erro ao inicializar dashboard:', erro);
-            if (erro.status === 401) {
+            console.error('Erro ao verificar autenticação:', erro);
+            window.location.href = '/login.html';
+        }
+    }
+
+    /**
+     * Realiza o logout do usuário
+     * @private
+     */
+    async _realizarLogout() {
+        try {
+            const resposta = await fetch('/api/auth/logout', {
+                method: 'POST'
+            });
+            
+            if (resposta.ok) {
                 window.location.href = '/login.html';
             }
+        } catch (erro) {
+            console.error('Erro ao realizar logout:', erro);
         }
     }
-    
-    async carregarEstatisticas() {
+
+    /**
+     * Carrega os dados do dashboard
+     * @private
+     */
+    async _carregarDados() {
         try {
-            const [salas, turmas, reservas, usuarios] = await Promise.all([
-                this.buscarDados('/api/sala'),
-                this.buscarDados('/api/turma'),
-                this.buscarDados('/api/reserva'),
-                this.buscarDados('/api/usuario')
+            const [salas, reservas, usuarios] = await Promise.all([
+                fetch('/api/sala').then(r => r.json()),
+                fetch('/api/reserva').then(r => r.json()),
+                fetch('/api/usuarios').then(r => r.json())
             ]);
-            
-            document.getElementById('totalSalas').textContent = salas.length;
-            document.getElementById('totalTurmas').textContent = turmas.length;
-            document.getElementById('totalReservas').textContent = reservas.length;
-            document.getElementById('totalUsuarios').textContent = usuarios.length;
+
+            this._totalSalas.textContent = salas.length;
+            this._totalReservas.textContent = reservas.length;
+            this._totalUsuarios.textContent = usuarios.length;
         } catch (erro) {
-            console.error('Erro ao carregar estatísticas:', erro);
+            console.error('Erro ao carregar dados:', erro);
         }
-    }
-    
-    async carregarReservasRecentes() {
-        try {
-            const reservas = await this.buscarDados('/api/reserva');
-            const recentes = reservas
-                .sort((a, b) => new Date(b.dataCriacao) - new Date(a.dataCriacao))
-                .slice(0, 5);
-                
-            const lista = document.getElementById('listaReservasRecentes');
-            lista.innerHTML = recentes.map(reserva => `
-                <div class="p-4 border rounded-lg">
-                    <p class="font-bold">${reserva.sala.nome}</p>
-                    <p class="text-sm text-gray-600">
-                        ${new Date(reserva.data).toLocaleDateString()} - 
-                        ${reserva.horarioInicio} às ${reserva.horarioFim}
-                    </p>
-                </div>
-            `).join('');
-        } catch (erro) {
-            console.error('Erro ao carregar reservas recentes:', erro);
-        }
-    }
-    
-    async buscarDados(url) {
-        const resposta = await fetch(url, {
-            headers: {
-                'Authorization': `Bearer ${this.token}`
-            }
-        });
-        
-        if (!resposta.ok) {
-            throw { status: resposta.status, message: 'Erro ao buscar dados' };
-        }
-        
-        const dados = await resposta.json();
-        return dados.dados;
-    }
-    
-    configurarEventos() {
-        document.getElementById('btnSair').addEventListener('click', () => {
-            localStorage.removeItem('token');
-            localStorage.removeItem('usuario');
-            window.location.href = '/login.html';
-        });
     }
 }
 
-// Inicialização
-document.addEventListener('DOMContentLoaded', () => {
-    new DashboardAdmin();
-}); 
+// Inicializa o gerenciador do dashboard
+const gerenciadorDashboard = new GerenciadorDashboard(); 

@@ -97,7 +97,12 @@ $rotas = [
     'POST:/auth/login' => DIRETORIO_API . '/auth/login.php',
     'POST:/auth/logout' => DIRETORIO_API . '/auth/logout.php',
     'GET:/auth/perfil' => DIRETORIO_API . '/auth/perfil.php',
-    'PUT:/auth/perfil' => DIRETORIO_API . '/auth/perfil.php'
+    'PUT:/auth/perfil' => DIRETORIO_API . '/auth/perfil.php',
+    'GET:/admin' => DIRETORIO_BASE . '/admin/index.html',
+    'GET:/admin/salas' => DIRETORIO_BASE . '/admin/salas.html',
+    'GET:/admin/reservas' => DIRETORIO_BASE . '/admin/reservas.html',
+    'GET:/admin/usuarios' => DIRETORIO_BASE . '/admin/usuarios.html',
+    'GET:/admin/configuracoes' => DIRETORIO_BASE . '/admin/configuracoes.html'
 ];
 
 // Verifica se a rota existe
