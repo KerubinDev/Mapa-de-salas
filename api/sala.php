@@ -1,22 +1,19 @@
 <?php
-require_once __DIR__ . '/config.php';
+require_once __DIR__ . '/../config.php';
 require_once __DIR__ . '/middleware.php';
 
 // Verifica autenticação
 $usuario = verificarAutenticacao();
 
-try {
-    $db = JsonDatabase::getInstance();
-    
-    switch ($_SERVER['REQUEST_METHOD']) {
-        case 'GET':
-            $salas = $db->getData('salas');
-            responderJson($salas);
-            break;
-            
-        default:
-            throw new Exception('Método não permitido', 405);
-    }
-} catch (Exception $e) {
-    responderErro($e->getMessage(), $e->getCode() ?: 400);
-} 
+// Lê o arquivo de banco de dados
+$salas = [];
+if (file_exists(DB_FILE)) {
+    $db = json_decode(file_get_contents(DB_FILE), true);
+    $salas = $db['salas'] ?? [];
+}
+
+// Retorna a lista de salas
+responderJson([
+    'sucesso' => true,
+    'dados' => $salas
+]); 

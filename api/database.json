@@ -1,5 +1,13 @@
 {
+    "usuarios": [
+        {
+            "id": 1,
+            "nome": "Administrador",
+            "email": "admin@exemplo.com",
+            "senha": "$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi",
+            "tipo": "admin"
+        }
+    ],
     "salas": [],
-    "turmas": [],
     "reservas": []
 } 
