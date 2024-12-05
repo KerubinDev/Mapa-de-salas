@@ -2,20 +2,100 @@
     "name": "Sistema de Gestão de Salas",
     "short_name": "Gestão Salas",
     "description": "Sistema para gerenciamento de reservas de salas de aula, controle de horários e turmas.",
-    "start_url": "/",
+    "categories": ["education", "productivity", "utilities"],
+    "start_url": "/?source=pwa",
+    "id": "/",
+    "scope": "/",
     "display": "standalone",
+    "orientation": "any",
     "background_color": "#ffffff",
     "theme_color": "#1d4ed8",
+    "dir": "ltr",
+    "lang": "pt-BR",
     "icons": [
         {
-            "src": "/assets/img/android-chrome-192x192.png",
-            "sizes": "192x192",
+            "src": "/assets/icons/icon-72x72.png",
+            "sizes": "72x72",
             "type": "image/png"
         },
         {
-            "src": "/assets/img/android-chrome-512x512.png",
-            "sizes": "512x512",
+            "src": "/assets/icons/icon-96x96.png",
+            "sizes": "96x96",
             "type": "image/png"
+        },
+        {
+            "src": "/assets/icons/icon-128x128.png",
+            "sizes": "128x128",
+            "type": "image/png"
+        },
+        {
+            "src": "/assets/icons/icon-144x144.png",
+            "sizes": "144x144",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/assets/icons/icon-152x152.png",
+            "sizes": "152x152",
+            "type": "image/png"
+        },
+        {
+            "src": "/assets/icons/icon-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/assets/icons/icon-384x384.png",
+            "sizes": "384x384",
+            "type": "image/png"
+        },
+        {
+            "src": "/assets/icons/icon-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
         }
-    ]
+    ],
+    "screenshots": [
+        {
+            "src": "/assets/screenshots/desktop-1.png",
+            "sizes": "1280x720",
+            "type": "image/png",
+            "platform": "wide",
+            "label": "Tela inicial do sistema"
+        },
+        {
+            "src": "/assets/screenshots/mobile-1.png",
+            "sizes": "750x1334",
+            "type": "image/png",
+            "platform": "narrow",
+            "label": "Versão mobile do sistema"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "Ver Quadro de Horários",
+            "short_name": "Horários",
+            "description": "Visualize o quadro de horários atual",
+            "url": "/?source=shortcut",
+            "icons": [{ "src": "/assets/icons/shortcut-calendar.png", "sizes": "96x96" }]
+        },
+        {
+            "name": "Fazer Login",
+            "short_name": "Login",
+            "description": "Acesse sua conta",
+            "url": "/login.html?source=shortcut",
+            "icons": [{ "src": "/assets/icons/shortcut-login.png", "sizes": "96x96" }]
+        }
+    ],
+    "related_applications": [],
+    "prefer_related_applications": false,
+    "handle_links": "preferred",
+    "launch_handler": {
+        "client_mode": ["navigate-existing", "auto"]
+    },
+    "edge_side_panel": {
+        "preferred_width": 400
+    }
 } 
