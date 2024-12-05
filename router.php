@@ -45,12 +45,13 @@ function servirArquivoEstatico($caminhoArquivo) {
 
         $contentType = $mimeTypes[$extensao] ?? 'text/plain';
         
-        // Remove o header JSON padrão para arquivos não-JSON
-        if ($contentType !== 'application/json') {
-            header_remove('Content-Type');
-            header("Content-Type: $contentType; charset=UTF-8");
-        }
-
+        // Remove todos os headers anteriores
+        header_remove();
+        
+        // Define o Content-Type apropriado
+        header("Content-Type: $contentType; charset=UTF-8");
+        
+        // Lê e envia o arquivo
         readfile($caminhoArquivo);
         return true;
     }
@@ -86,6 +87,7 @@ $rotaChave = "$metodo:$rotaUri";
 
 // Define as rotas disponíveis
 $rotas = [
+    // Rotas da API (mantém o Content-Type: application/json)
     'GET:/sala' => DIRETORIO_API . '/sala.php',
     'POST:/sala' => DIRETORIO_API . '/sala.php',
     'PUT:/sala' => DIRETORIO_API . '/sala.php',
@@ -99,7 +101,7 @@ $rotas = [
     'GET:/auth/perfil' => DIRETORIO_API . '/auth/perfil.php',
     'PUT:/auth/perfil' => DIRETORIO_API . '/auth/perfil.php',
     
-    // Rotas de páginas administrativas
+    // Rotas de páginas (serão tratadas como arquivos estáticos)
     'GET:/admin' => DIRETORIO_BASE . '/admin/adminpanel.html',
     'GET:/admin/salas' => DIRETORIO_BASE . '/admin/salas.html',
     'GET:/admin/reservas' => DIRETORIO_BASE . '/admin/reservas.html',
@@ -109,8 +111,18 @@ $rotas = [
 
 // Verifica se a rota existe
 if (isset($rotas[$rotaChave])) {
-    require $rotas[$rotaChave];
-    exit(0);
+    $arquivoRota = $rotas[$rotaChave];
+    
+    // Se for um arquivo HTML, serve como arquivo estático
+    if (pathinfo($arquivoRota, PATHINFO_EXTENSION) === 'html') {
+        if (servirArquivoEstatico($arquivoRota)) {
+            exit(0);
+        }
+    } else {
+        // Se não for HTML, assume que é um arquivo PHP da API
+        require $arquivoRota;
+        exit(0);
+    }
 }
 
 // Se chegou aqui, a rota não foi encontrada
