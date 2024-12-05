@@ -3,87 +3,66 @@
  */
 class GerenciadorLogin {
     constructor() {
-        this.configurarFormulario();
-    }
-    
-    /**
-     * Configura o formulário de login
-     */
-    configurarFormulario() {
-        const form = document.getElementById('formLogin');
-        if (!form) return;
-        
-        form.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await this.realizarLogin(form);
-        });
+        this.apiUrl = '/api/auth/login';
     }
     
     /**
      * Realiza o login
      */
-    async realizarLogin(form) {
+    async realizarLogin(email, senha) {
+        console.log('Tentando login com:', { email }); // não logue a senha
+        
         try {
-            // Remove mensagens de erro anteriores
-            const erroAnterior = form.querySelector('.bg-red-50');
-            if (erroAnterior) erroAnterior.remove();
-            
-            // Obtém os dados do formulário
-            const dados = {
-                email: form.email.value,
-                senha: form.senha.value
-            };
-            
-            // Envia a requisição
-            const response = await fetch('/api/auth/login', {
+            const resposta = await fetch(this.apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify(dados)
+                body: JSON.stringify({ email, senha })
             });
+
+            console.log('Status da resposta:', resposta.status);
             
-            // Verifica se houve erro na requisição
-            const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-                throw new Error('Resposta inválida do servidor');
+            const dados = await resposta.json();
+            console.log('Dados recebidos:', dados);
+
+            if (!dados.sucesso) {
+                throw new Error(dados.erro?.mensagem || 'Erro no login');
             }
-            
-            const data = await response.json();
-            if (!response.ok) {
-                throw new Error(data.erro || 'Erro ao realizar login');
-            }
-            
-            // Salva os dados do usuário
-            if (form.lembrar.checked) {
-                localStorage.setItem('usuario', JSON.stringify(data));
-            } else {
-                sessionStorage.setItem('usuario', JSON.stringify(data));
-            }
-            
-            // Redireciona para a página inicial
-            window.location.href = '/admin/';
-            
+
+            return dados.dados;
         } catch (erro) {
-            console.error('Erro no login:', erro);
-            this.mostrarErro(form, erro.message);
+            console.error('Erro detalhado:', erro);
+            throw new Error(erro.message || 'Erro no login');
         }
-    }
-    
-    /**
-     * Mostra uma mensagem de erro no formulário
-     */
-    mostrarErro(form, mensagem) {
-        const erro = document.createElement('div');
-        erro.className = 'bg-red-50 text-red-600 p-4 rounded-lg mb-4';
-        erro.textContent = mensagem;
-        
-        form.insertBefore(erro, form.firstChild);
     }
 }
 
-// Inicializa o gerenciador quando a página carregar
+// Inicialização
 document.addEventListener('DOMContentLoaded', () => {
-    new GerenciadorLogin();
+    const gerenciador = new GerenciadorLogin();
+    const form = document.querySelector('form');
+    
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const email = form.querySelector('[name="email"]').value;
+        const senha = form.querySelector('[name="senha"]').value;
+        
+        try {
+            const resultado = await gerenciador.realizarLogin(email, senha);
+            console.log('Login bem sucedido:', resultado);
+            
+            // Salva o token
+            localStorage.setItem('token', resultado.token);
+            localStorage.setItem('usuario', JSON.stringify(resultado.usuario));
+            
+            // Redireciona para a página inicial
+            window.location.href = '/';
+        } catch (erro) {
+            console.error('Erro no login:', erro);
+            alert(erro.message);
+        }
+    });
 }); 
