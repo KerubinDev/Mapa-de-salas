@@ -10,39 +10,32 @@ if (APP_DEBUG) {
 // Log para debug
 error_log("Requisição recebida: " . $_SERVER['REQUEST_METHOD'] . " " . $_SERVER['REQUEST_URI']);
 
-// Mapeia extensões para tipos MIME
-$mimeTypes = [
-    'js' => 'application/javascript',
-    'webmanifest' => 'application/manifest+json',
-    'json' => 'application/json',
-    'css' => 'text/css',
-    'html' => 'text/html',
-    'png' => 'image/png',
-    'jpg' => 'image/jpeg',
-    'gif' => 'image/gif'
-];
-
 // Obtém o método e caminho da requisição
 $metodo = $_SERVER['REQUEST_METHOD'];
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+
+// Remove o prefixo do path base se existir
+$basePath = '/api';
+if (strpos($uri, $basePath) === 0) {
+    $uri = substr($uri, strlen($basePath));
+}
 $uri = '/' . trim($uri, '/');
 
-// Log para debug
-error_log("Método: $metodo, URI: $uri");
+error_log("URI processada: $uri");
 
 // Define as rotas da API
 $rotas = [
     // Rotas de autenticação
-    'POST:/api/auth/login' => 'api/auth/login.php',
-    'POST:/api/auth/logout' => 'api/auth/logout.php',
-    'GET:/api/auth/perfil' => 'api/auth/perfil.php',
-    'PUT:/api/auth/perfil' => 'api/auth/perfil.php',
+    'POST:/auth/login' => 'api/auth/login.php',
+    'POST:/auth/logout' => 'api/auth/logout.php',
+    'GET:/auth/perfil' => 'api/auth/perfil.php',
+    'PUT:/auth/perfil' => 'api/auth/perfil.php',
     
     // Rotas de salas
-    'GET:/api/sala' => 'api/sala.php',
-    'POST:/api/sala' => 'api/sala.php',
-    'PUT:/api/sala' => 'api/sala.php',
-    'DELETE:/api/sala' => 'api/sala.php',
+    'GET:/sala' => 'api/sala.php',
+    'POST:/sala' => 'api/sala.php',
+    'PUT:/sala' => 'api/sala.php',
+    'DELETE:/sala' => 'api/sala.php',
     
     // Rotas de turmas
     'GET:/api/turma' => 'api/turma.php',
@@ -57,16 +50,6 @@ $rotas = [
     'DELETE:/api/reserva' => 'api/reserva.php'
 ];
 
-// Verifica se é um arquivo estático
-$ext = pathinfo($uri, PATHINFO_EXTENSION);
-if ($ext && file_exists(__DIR__ . $uri)) {
-    if (isset($mimeTypes[$ext])) {
-        header('Content-Type: ' . $mimeTypes[$ext]);
-    }
-    readfile(__DIR__ . $uri);
-    exit;
-}
-
 // Verifica se é uma rota da API
 $rotaChave = "{$metodo}:{$uri}";
 error_log("Procurando rota: $rotaChave");
@@ -80,7 +63,7 @@ if (isset($rotas[$rotaChave])) {
         require $arquivo;
         exit;
     } else {
-        error_log("Arquivo não encontrado!");
+        error_log("Arquivo não encontrado: $arquivo");
     }
 }
 
@@ -96,7 +79,8 @@ echo json_encode([
         'detalhes' => [
             'metodo' => $metodo,
             'uri' => $uri,
-            'rotaChave' => $rotaChave
+            'rotaChave' => $rotaChave,
+            'requestUri' => $_SERVER['REQUEST_URI']
         ]
     ]
 ]);
