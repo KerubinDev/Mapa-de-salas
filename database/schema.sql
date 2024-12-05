@@ -112,7 +112,7 @@ VALUES (
     'admin',
     'Administrador',
     'admin@sistema.local',
-    '$2y$10$YourHashedPasswordHere',
+    '$2y$10$8H0IzP3wUJGQJ9mN6qXQo.DYWFqxRvEgn3H3QHbUZoYZ6TZQQqK6.',
     'admin'
 );
 
