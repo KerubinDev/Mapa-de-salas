@@ -35,3 +35,12 @@ Header set Access-Control-Allow-Headers "Content-Type, Authorization"
 <FilesMatch "\.(ico|pdf|jpg|jpeg|png|gif|js|css|swf)$">
     Header set Cache-Control "max-age=31536000, public"
 </FilesMatch>
+
+# Define tipos MIME corretos
+AddType application/javascript .js
+AddType application/manifest+json .webmanifest
+AddType application/json .json
+
+# Força HTTPS
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
