@@ -77,7 +77,8 @@ if ($ext && file_exists(__DIR__ . $uri)) {
 }
 
 // Verifica se é uma rota da API
-$rotaChave = "{$metodo}:{$uri}";
+$rotaBase = preg_replace('/\.php$/', '', $uri); // Remove .php do final
+$rotaChave = "{$metodo}:{$rotaBase}";
 error_log("Procurando rota: $rotaChave");
 
 if (isset($rotas[$rotaChave])) {
@@ -103,9 +104,10 @@ echo json_encode([
         'detalhes' => [
             'metodo' => $metodo,
             'uri' => $uri,
+            'rotaBase' => $rotaBase,
             'rotaChave' => $rotaChave,
-            'requestUri' => $_SERVER['REQUEST_URI']
+            'requestUri' => $_SERVER['REQUEST_URI'],
+            'rotasDisponiveis' => array_keys($rotas)
         ]
     ]
 ]);
- 
