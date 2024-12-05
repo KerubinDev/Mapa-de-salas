@@ -1,27 +1,28 @@
 <?php
+require_once '../config.php';
 require_once 'AuthManager.php';
-
-// Tratamento específico para OPTIONS (preflight CORS)
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    header('Access-Control-Allow-Origin: *');
-    header('Access-Control-Allow-Methods: POST, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type');
-    header('Content-Type: application/json');
-    exit(0);
-}
+require_once __DIR__ . '/../../database/Database.php';
 
 // Verifica se é uma requisição POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
-    http_response_code(405);
-    echo json_encode(['erro' => 'Método não permitido']);
-    exit;
+    responderErro('Método não permitido', 405);
 }
 
 try {
-    $auth = AuthManager::getInstance();
-    $auth->logout();
-    echo json_encode(['mensagem' => 'Logout realizado com sucesso']);
+    // Obtém o token do header
+    $headers = getallheaders();
+    $authHeader = $headers['Authorization'] ?? '';
+    
+    if (preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
+        $token = $matches[1];
+        
+        // Realiza o logout
+        $auth = AuthManager::getInstance();
+        $auth->logout($token);
+    }
+    
+    responderJson(['mensagem' => 'Logout realizado com sucesso']);
+    
 } catch (Exception $e) {
-    http_response_code(400);
-    echo json_encode(['erro' => $e->getMessage()]);
+    responderErro($e->getMessage(), 400);
 } 

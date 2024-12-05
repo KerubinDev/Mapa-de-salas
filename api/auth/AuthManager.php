@@ -1,20 +1,16 @@
 <?php
 require_once __DIR__ . '/../config.php';
+require_once __DIR__ . '/../../database/Database.php';
 
 /**
  * Gerenciador de Autenticação
- * Responsável por gerenciar usuários e sessões
  */
 class AuthManager {
-    private $_dados;
+    private $_db;
     private static $_instance = null;
     
     private function __construct() {
-        $this->_dados = lerDados();
-        if (!isset($this->_dados['usuarios'])) {
-            $this->_dados['usuarios'] = [];
-            $this->criarUsuarioAdmin();
-        }
+        $this->_db = Database::getInstance()->getConnection();
     }
     
     /**
@@ -28,39 +24,36 @@ class AuthManager {
     }
     
     /**
-     * Cria o usuário administrador padrão
-     */
-    private function criarUsuarioAdmin() {
-        // Credenciais do administrador principal
-        $admin = [
-            'id' => 'admin',
-            'nome' => 'Administrador',
-            'email' => 'admin@sistema.local',
-            'senha' => password_hash('admin123', PASSWORD_DEFAULT),
-            'tipo' => 'admin',
-            'dataCriacao' => date('Y-m-d H:i:s')
-        ];
-        
-        $this->_dados['usuarios'][] = $admin;
-        salvarDados($this->_dados);
-    }
-    
-    /**
      * Realiza o login do usuário
      */
     public function login($email, $senha) {
-        $usuario = $this->buscarUsuarioPorEmail($email);
+        $stmt = $this->_db->prepare('
+            SELECT * FROM usuarios WHERE email = ? LIMIT 1
+        ');
+        $stmt->execute([$email]);
+        $usuario = $stmt->fetch();
         
         if (!$usuario || !password_verify($senha, $usuario['senha'])) {
             throw new Exception('Email ou senha inválidos');
         }
         
+        // Gera um novo token
+        $token = bin2hex(random_bytes(32));
+        
+        // Atualiza o token do usuário
+        $stmt = $this->_db->prepare('
+            UPDATE usuarios 
+            SET token = ?, data_atualizacao = CURRENT_TIMESTAMP 
+            WHERE id = ?
+        ');
+        $stmt->execute([$token, $usuario['id']]);
+        
         // Remove a senha antes de retornar
         unset($usuario['senha']);
+        $usuario['token'] = $token;
         
-        // Inicia a sessão
-        session_start();
-        $_SESSION['usuario'] = $usuario;
+        // Registra o login no log
+        $this->registrarLog($usuario['id'], 'login', 'Login realizado com sucesso');
         
         return $usuario;
     }
@@ -68,216 +61,169 @@ class AuthManager {
     /**
      * Realiza o logout do usuário
      */
-    public function logout() {
-        session_start();
-        session_destroy();
-    }
-    
-    /**
-     * Verifica se o usuário está autenticado
-     */
-    public function verificarAutenticacao() {
-        session_start();
-        return isset($_SESSION['usuario']);
-    }
-    
-    /**
-     * Retorna o usuário autenticado
-     */
-    public function getUsuarioAutenticado() {
-        session_start();
-        return $_SESSION['usuario'] ?? null;
-    }
-    
-    /**
-     * Cria um novo usuário (apenas admin pode criar)
-     */
-    public function criarUsuario($dados, $usuarioAdmin) {
-        if (!$usuarioAdmin || $usuarioAdmin['tipo'] !== 'admin') {
-            throw new Exception('Apenas administradores podem criar usuários');
+    public function logout($token) {
+        $stmt = $this->_db->prepare('
+            SELECT id FROM usuarios WHERE token = ? LIMIT 1
+        ');
+        $stmt->execute([$token]);
+        $usuario = $stmt->fetch();
+        
+        if ($usuario) {
+            // Registra o logout no log
+            $this->registrarLog($usuario['id'], 'logout', 'Logout realizado');
+            
+            // Invalida o token
+            $stmt = $this->_db->prepare('
+                UPDATE usuarios 
+                SET token = NULL, data_atualizacao = CURRENT_TIMESTAMP 
+                WHERE id = ?
+            ');
+            $stmt->execute([$usuario['id']]);
         }
-        
-        if ($this->buscarUsuarioPorEmail($dados['email'])) {
-            throw new Exception('Email já cadastrado');
-        }
-        
-        $novoUsuario = [
-            'id' => uniqid(),
-            'nome' => $dados['nome'],
-            'email' => $dados['email'],
-            'senha' => password_hash($dados['senha'], PASSWORD_DEFAULT),
-            'tipo' => 'usuario',
-            'dataCriacao' => date('Y-m-d H:i:s')
-        ];
-        
-        $this->_dados['usuarios'][] = $novoUsuario;
-        salvarDados($this->_dados);
-        
-        // Remove a senha antes de retornar
-        unset($novoUsuario['senha']);
-        return $novoUsuario;
-    }
-    
-    /**
-     * Busca um usuário pelo email
-     */
-    private function buscarUsuarioPorEmail($email) {
-        foreach ($this->_dados['usuarios'] as $usuario) {
-            if ($usuario['email'] === $email) {
-                return $usuario;
-            }
-        }
-        return null;
-    }
-    
-    /**
-     * Lista todos os usuários (sem as senhas)
-     */
-    public function listarUsuarios() {
-        $usuarios = array_map(function($usuario) {
-            $usuarioSemSenha = $usuario;
-            unset($usuarioSemSenha['senha']);
-            return $usuarioSemSenha;
-        }, $this->_dados['usuarios']);
-
-        return $usuarios;
-    }
-    
-    /**
-     * Atualiza um usuário existente
-     */
-    public function atualizarUsuario($id, $dados, $usuarioAdmin) {
-        // Localiza o usuário
-        $indice = array_search($id, array_column($this->_dados['usuarios'], 'id'));
-        
-        if ($indice === false) {
-            throw new Exception('Usuário não encontrado', 404);
-        }
-        
-        // Apenas admin pode alterar o tipo do usuário
-        if (isset($dados['tipo']) && $usuarioAdmin['tipo'] !== 'admin') {
-            unset($dados['tipo']);
-        }
-        
-        // Se estiver alterando o email, verifica se já existe
-        if (isset($dados['email']) && 
-            $dados['email'] !== $this->_dados['usuarios'][$indice]['email']) {
-            if ($this->buscarUsuarioPorEmail($dados['email'])) {
-                throw new Exception('Email já cadastrado');
-            }
-        }
-        
-        // Atualiza os dados
-        $this->_dados['usuarios'][$indice] = array_merge(
-            $this->_dados['usuarios'][$indice],
-            array_filter([
-                'nome' => $dados['nome'] ?? null,
-                'email' => $dados['email'] ?? null,
-                'tipo' => $dados['tipo'] ?? null,
-                'dataAtualizacao' => date('Y-m-d H:i:s')
-            ])
-        );
-        
-        // Se forneceu nova senha, atualiza
-        if (!empty($dados['senha'])) {
-            if (strlen($dados['senha']) < 6) {
-                throw new Exception('A senha deve ter no mínimo 6 caracteres');
-            }
-            $this->_dados['usuarios'][$indice]['senha'] = 
-                password_hash($dados['senha'], PASSWORD_DEFAULT);
-        }
-        
-        salvarDados($this->_dados);
-        
-        // Retorna usuário sem a senha
-        $usuarioAtualizado = $this->_dados['usuarios'][$indice];
-        unset($usuarioAtualizado['senha']);
-        return $usuarioAtualizado;
-    }
-    
-    /**
-     * Remove um usuário
-     */
-    public function removerUsuario($id) {
-        // Não permite remover o admin principal
-        if ($id === 'admin') {
-            throw new Exception('Não é possível remover o usuário administrador principal');
-        }
-        
-        $indice = array_search($id, array_column($this->_dados['usuarios'], 'id'));
-        
-        if ($indice === false) {
-            throw new Exception('Usuário não encontrado', 404);
-        }
-        
-        array_splice($this->_dados['usuarios'], $indice, 1);
-        salvarDados($this->_dados);
-    }
-    
-    /**
-     * Registra uma ação no log
-     */
-    public function registrarLog($usuarioId, $acao, $detalhes = '') {
-        if (!isset($this->_dados['logs'])) {
-            $this->_dados['logs'] = [];
-        }
-
-        $log = [
-            'id' => uniqid(),
-            'usuarioId' => $usuarioId,
-            'acao' => $acao,
-            'detalhes' => $detalhes,
-            'ip' => $_SERVER['REMOTE_ADDR'],
-            'userAgent' => $_SERVER['HTTP_USER_AGENT'],
-            'data' => date('Y-m-d H:i:s')
-        ];
-
-        $this->_dados['logs'][] = $log;
-        salvarDados($this->_dados);
-        return $log;
-    }
-    
-    /**
-     * Lista os logs do sistema
-     */
-    public function listarLogs($filtros = []) {
-        if (!isset($this->_dados['logs'])) {
-            return [];
-        }
-
-        $logs = $this->_dados['logs'];
-
-        // Aplica filtros
-        if (!empty($filtros)) {
-            $logs = array_filter($logs, function($log) use ($filtros) {
-                foreach ($filtros as $campo => $valor) {
-                    if ($campo === 'dataInicio' && $log['data'] < $valor) return false;
-                    if ($campo === 'dataFim' && $log['data'] > $valor) return false;
-                    if ($campo === 'usuarioId' && $log['usuarioId'] !== $valor) return false;
-                    if ($campo === 'acao' && $log['acao'] !== $valor) return false;
-                }
-                return true;
-            });
-        }
-
-        // Ordena por data decrescente
-        usort($logs, function($a, $b) {
-            return strcmp($b['data'], $a['data']);
-        });
-
-        return array_values($logs);
     }
     
     /**
      * Verifica se um token é válido
      */
     public function verificarToken($token) {
-        $dados = lerDados();
-        foreach ($dados['usuarios'] as $usuario) {
-            if (isset($usuario['token']) && $usuario['token'] === $token) {
-                return $usuario;
-            }
+        $stmt = $this->_db->prepare('
+            SELECT * FROM usuarios WHERE token = ? LIMIT 1
+        ');
+        $stmt->execute([$token]);
+        $usuario = $stmt->fetch();
+        
+        if (!$usuario) {
+            return null;
         }
-        return null;
+        
+        // Remove a senha antes de retornar
+        unset($usuario['senha']);
+        return $usuario;
+    }
+    
+    /**
+     * Cria um novo usuário
+     */
+    public function criarUsuario($dados, $usuarioAdmin) {
+        if (!$usuarioAdmin || $usuarioAdmin['tipo'] !== 'admin') {
+            throw new Exception('Apenas administradores podem criar usuários');
+        }
+        
+        // Verifica se o email já está em uso
+        $stmt = $this->_db->prepare('
+            SELECT id FROM usuarios WHERE email = ? LIMIT 1
+        ');
+        $stmt->execute([$dados['email']]);
+        if ($stmt->fetch()) {
+            throw new Exception('Email já cadastrado');
+        }
+        
+        try {
+            $this->_db->beginTransaction();
+            
+            // Cria o usuário
+            $stmt = $this->_db->prepare('
+                INSERT INTO usuarios (id, nome, email, senha, tipo)
+                VALUES (?, ?, ?, ?, ?)
+            ');
+            
+            $id = uniqid();
+            $stmt->execute([
+                $id,
+                $dados['nome'],
+                $dados['email'],
+                password_hash($dados['senha'], PASSWORD_DEFAULT),
+                'usuario'
+            ]);
+            
+            // Registra a criação no log
+            $this->registrarLog(
+                $usuarioAdmin['id'], 
+                'criar', 
+                "Usuário {$dados['nome']} criado"
+            );
+            
+            // Busca o usuário criado
+            $stmt = $this->_db->prepare('
+                SELECT id, nome, email, tipo, data_criacao 
+                FROM usuarios WHERE id = ?
+            ');
+            $stmt->execute([$id]);
+            $usuario = $stmt->fetch();
+            
+            $this->_db->commit();
+            return $usuario;
+            
+        } catch (Exception $e) {
+            $this->_db->rollBack();
+            throw $e;
+        }
+    }
+    
+    /**
+     * Lista todos os usuários
+     */
+    public function listarUsuarios() {
+        $stmt = $this->_db->query('
+            SELECT id, nome, email, tipo, data_criacao, data_atualizacao 
+            FROM usuarios ORDER BY nome
+        ');
+        return $stmt->fetchAll();
+    }
+    
+    /**
+     * Registra uma ação no log
+     */
+    public function registrarLog($usuarioId, $acao, $detalhes = '') {
+        $stmt = $this->_db->prepare('
+            INSERT INTO logs (id, usuario_id, acao, detalhes, ip, user_agent)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ');
+        
+        $stmt->execute([
+            uniqid(),
+            $usuarioId,
+            $acao,
+            $detalhes,
+            $_SERVER['REMOTE_ADDR'] ?? '',
+            $_SERVER['HTTP_USER_AGENT'] ?? ''
+        ]);
+    }
+    
+    /**
+     * Lista os logs do sistema
+     */
+    public function listarLogs($filtros = []) {
+        $sql = 'SELECT l.*, u.nome as usuario_nome, u.email as usuario_email 
+                FROM logs l 
+                LEFT JOIN usuarios u ON l.usuario_id = u.id 
+                WHERE 1=1';
+        $params = [];
+        
+        if (!empty($filtros['dataInicio'])) {
+            $sql .= ' AND l.data_criacao >= ?';
+            $params[] = $filtros['dataInicio'];
+        }
+        
+        if (!empty($filtros['dataFim'])) {
+            $sql .= ' AND l.data_criacao <= ?';
+            $params[] = $filtros['dataFim'];
+        }
+        
+        if (!empty($filtros['usuarioId'])) {
+            $sql .= ' AND l.usuario_id = ?';
+            $params[] = $filtros['usuarioId'];
+        }
+        
+        if (!empty($filtros['acao'])) {
+            $sql .= ' AND l.acao = ?';
+            $params[] = $filtros['acao'];
+        }
+        
+        $sql .= ' ORDER BY l.data_criacao DESC';
+        
+        $stmt = $this->_db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll();
     }
 } 

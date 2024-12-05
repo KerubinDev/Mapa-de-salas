@@ -1,0 +1,21 @@
+{
+    "name": "Sistema de Gestão de Salas",
+    "short_name": "Gestão Salas",
+    "description": "Sistema para gerenciamento de reservas de salas de aula, controle de horários e turmas.",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#1d4ed8",
+    "icons": [
+        {
+            "src": "/assets/img/android-chrome-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "/assets/img/android-chrome-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+} 

@@ -1,27 +1,30 @@
 <?php
 require_once 'config.php';
+require_once 'middleware.php';
+require_once __DIR__ . '/../database/Database.php';
+
+// Verifica autenticação para métodos que modificam dados
+if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+    $usuario = verificarAutenticacao();
+}
 
 /**
  * Gerenciador de Turmas
- * Endpoints:
- * GET / - Lista todas as turmas
- * POST / - Cria uma nova turma
- * PUT /{id} - Atualiza uma turma existente
- * DELETE /{id} - Remove uma turma
  */
-
 class GerenciadorTurma {
-    private $_dados;
+    private $_db;
     
     public function __construct() {
-        $this->_dados = lerDados();
+        $this->_db = Database::getInstance()->getConnection();
     }
     
     /**
      * Lista todas as turmas cadastradas
      */
     public function listar() {
-        responderJson($this->_dados['turmas']);
+        $stmt = $this->_db->query('SELECT * FROM turmas ORDER BY nome');
+        $turmas = $stmt->fetchAll();
+        responderJson($turmas);
     }
     
     /**
@@ -49,30 +52,42 @@ class GerenciadorTurma {
         }
         
         // Verifica se já existe turma com mesmo nome
-        $turmaExistente = array_filter($this->_dados['turmas'], 
-            function($turma) use ($dados) {
-                return strtolower($turma['nome']) === strtolower($dados['nome']);
-            }
-        );
-        
-        if (!empty($turmaExistente)) {
+        $stmt = $this->_db->prepare('SELECT id FROM turmas WHERE LOWER(nome) = LOWER(?)');
+        $stmt->execute([$dados['nome']]);
+        if ($stmt->fetch()) {
             responderErro('Já existe uma turma com este nome');
         }
         
-        // Cria nova turma
-        $novaTurma = [
-            'id' => uniqid(),
-            'nome' => $dados['nome'],
-            'professor' => $dados['professor'],
-            'numeroAlunos' => (int)$dados['numeroAlunos'],
-            'turno' => $dados['turno'],
-            'dataCriacao' => date('Y-m-d H:i:s')
-        ];
-        
-        $this->_dados['turmas'][] = $novaTurma;
-        salvarDados($this->_dados);
-        
-        responderJson($novaTurma, 201);
+        try {
+            $this->_db->beginTransaction();
+            
+            // Cria nova turma
+            $stmt = $this->_db->prepare('
+                INSERT INTO turmas (id, nome, professor, numero_alunos, turno)
+                VALUES (?, ?, ?, ?, ?)
+            ');
+            
+            $id = uniqid();
+            $stmt->execute([
+                $id,
+                $dados['nome'],
+                $dados['professor'],
+                (int)$dados['numeroAlunos'],
+                $dados['turno']
+            ]);
+            
+            // Busca a turma criada
+            $stmt = $this->_db->prepare('SELECT * FROM turmas WHERE id = ?');
+            $stmt->execute([$id]);
+            $turma = $stmt->fetch();
+            
+            $this->_db->commit();
+            responderJson($turma, 201);
+            
+        } catch (Exception $e) {
+            $this->_db->rollBack();
+            throw $e;
+        }
     }
     
     /**
@@ -81,52 +96,78 @@ class GerenciadorTurma {
     public function atualizar($id) {
         $dados = json_decode(file_get_contents('php://input'), true);
         
-        // Localiza a turma
-        $indice = array_search($id, array_column($this->_dados['turmas'], 'id'));
-        
-        if ($indice === false) {
+        // Verifica se a turma existe
+        $stmt = $this->_db->prepare('SELECT * FROM turmas WHERE id = ?');
+        $stmt->execute([$id]);
+        if (!$stmt->fetch()) {
             responderErro('Turma não encontrada', 404);
         }
         
         // Validações
         if (isset($dados['nome'])) {
-            $turmaExistente = array_filter($this->_dados['turmas'], 
-                function($turma) use ($dados, $id) {
-                    return $turma['id'] !== $id && 
-                           strtolower($turma['nome']) === strtolower($dados['nome']);
-                }
-            );
-            
-            if (!empty($turmaExistente)) {
+            $stmt = $this->_db->prepare('
+                SELECT id FROM turmas 
+                WHERE LOWER(nome) = LOWER(?) AND id != ?
+            ');
+            $stmt->execute([$dados['nome'], $id]);
+            if ($stmt->fetch()) {
                 responderErro('Já existe uma turma com este nome');
             }
+        }
+        
+        if (isset($dados['turno']) && 
+            !in_array($dados['turno'], ['manha', 'tarde', 'noite'])) {
+            responderErro('Turno deve ser: manha, tarde ou noite');
+        }
+        
+        try {
+            $this->_db->beginTransaction();
             
-            $this->_dados['turmas'][$indice]['nome'] = $dados['nome'];
-        }
-        
-        if (isset($dados['professor'])) {
-            $this->_dados['turmas'][$indice]['professor'] = $dados['professor'];
-        }
-        
-        if (isset($dados['numeroAlunos'])) {
-            if (!is_numeric($dados['numeroAlunos'])) {
-                responderErro('Número de alunos deve ser um valor válido');
+            // Monta a query de atualização
+            $campos = [];
+            $valores = [];
+            
+            if (isset($dados['nome'])) {
+                $campos[] = 'nome = ?';
+                $valores[] = $dados['nome'];
             }
-            $this->_dados['turmas'][$indice]['numeroAlunos'] = 
-                (int)$dados['numeroAlunos'];
-        }
-        
-        if (isset($dados['turno'])) {
-            if (!in_array($dados['turno'], ['manha', 'tarde', 'noite'])) {
-                responderErro('Turno deve ser: manha, tarde ou noite');
+            
+            if (isset($dados['professor'])) {
+                $campos[] = 'professor = ?';
+                $valores[] = $dados['professor'];
             }
-            $this->_dados['turmas'][$indice]['turno'] = $dados['turno'];
+            
+            if (isset($dados['numeroAlunos'])) {
+                $campos[] = 'numero_alunos = ?';
+                $valores[] = (int)$dados['numeroAlunos'];
+            }
+            
+            if (isset($dados['turno'])) {
+                $campos[] = 'turno = ?';
+                $valores[] = $dados['turno'];
+            }
+            
+            $campos[] = 'data_atualizacao = CURRENT_TIMESTAMP';
+            
+            // Adiciona o ID no final do array de valores
+            $valores[] = $id;
+            
+            $sql = 'UPDATE turmas SET ' . implode(', ', $campos) . ' WHERE id = ?';
+            $stmt = $this->_db->prepare($sql);
+            $stmt->execute($valores);
+            
+            // Busca a turma atualizada
+            $stmt = $this->_db->prepare('SELECT * FROM turmas WHERE id = ?');
+            $stmt->execute([$id]);
+            $turma = $stmt->fetch();
+            
+            $this->_db->commit();
+            responderJson($turma);
+            
+        } catch (Exception $e) {
+            $this->_db->rollBack();
+            throw $e;
         }
-        
-        $this->_dados['turmas'][$indice]['dataAtualizacao'] = date('Y-m-d H:i:s');
-        salvarDados($this->_dados);
-        
-        responderJson($this->_dados['turmas'][$indice]);
     }
     
     /**
@@ -134,27 +175,30 @@ class GerenciadorTurma {
      */
     public function remover($id) {
         // Verifica se existem reservas para esta turma
-        $reservasExistentes = array_filter($this->_dados['reservas'], 
-            function($reserva) use ($id) {
-                return $reserva['turmaId'] === $id;
-            }
-        );
-        
-        if (!empty($reservasExistentes)) {
+        $stmt = $this->_db->prepare('SELECT id FROM reservas WHERE turma_id = ?');
+        $stmt->execute([$id]);
+        if ($stmt->fetch()) {
             responderErro('Não é possível remover uma turma com reservas ativas');
         }
         
-        // Localiza e remove a turma
-        $indice = array_search($id, array_column($this->_dados['turmas'], 'id'));
-        
-        if ($indice === false) {
-            responderErro('Turma não encontrada', 404);
+        try {
+            $this->_db->beginTransaction();
+            
+            // Remove a turma
+            $stmt = $this->_db->prepare('DELETE FROM turmas WHERE id = ?');
+            $stmt->execute([$id]);
+            
+            if ($stmt->rowCount() === 0) {
+                responderErro('Turma não encontrada', 404);
+            }
+            
+            $this->_db->commit();
+            responderJson(['mensagem' => 'Turma removida com sucesso']);
+            
+        } catch (Exception $e) {
+            $this->_db->rollBack();
+            throw $e;
         }
-        
-        array_splice($this->_dados['turmas'], $indice, 1);
-        salvarDados($this->_dados);
-        
-        responderJson(['mensagem' => 'Turma removida com sucesso']);
     }
 }
 
@@ -163,25 +207,33 @@ $gerenciador = new GerenciadorTurma();
 $metodo = $_SERVER['REQUEST_METHOD'];
 $id = $_GET['id'] ?? null;
 
-switch ($metodo) {
-    case 'GET':
-        $gerenciador->listar();
-        break;
-        
-    case 'POST':
-        $gerenciador->criar();
-        break;
-        
-    case 'PUT':
-        if (!$id) responderErro('ID da turma não informado');
-        $gerenciador->atualizar($id);
-        break;
-        
-    case 'DELETE':
-        if (!$id) responderErro('ID da turma não informado');
-        $gerenciador->remover($id);
-        break;
-        
-    default:
-        responderErro('Método não suportado', 405);
+try {
+    switch ($metodo) {
+        case 'GET':
+            $gerenciador->listar();
+            break;
+            
+        case 'POST':
+            $dados = json_decode(file_get_contents('php://input'), true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new Exception('Dados JSON inválidos');
+            }
+            $gerenciador->criar();
+            break;
+            
+        case 'PUT':
+            if (!$id) throw new Exception('ID da turma não informado');
+            $gerenciador->atualizar($id);
+            break;
+            
+        case 'DELETE':
+            if (!$id) throw new Exception('ID da turma não informado');
+            $gerenciador->remover($id);
+            break;
+            
+        default:
+            throw new Exception('Método não suportado', 405);
+    }
+} catch (Exception $e) {
+    responderErro($e->getMessage(), $e->getCode() ?: 400);
 } 

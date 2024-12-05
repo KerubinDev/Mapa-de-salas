@@ -1,6 +1,7 @@
 <?php
 require_once 'config.php';
 require_once 'middleware.php';
+require_once __DIR__ . '/../database/Database.php';
 
 // Verifica autenticação
 try {
@@ -16,38 +17,46 @@ try {
  * Gerenciador de Configurações
  */
 class GerenciadorConfiguracoes {
-    private $_dados;
+    private $_db;
     
     public function __construct() {
-        $this->_dados = lerDados();
-        if (!isset($this->_dados['configuracoes'])) {
-            $this->_dados['configuracoes'] = $this->getConfiguracoesDefault();
-        }
-    }
-    
-    /**
-     * Retorna as configurações padrão
-     */
-    private function getConfiguracoesDefault() {
-        return [
-            'horarioAbertura' => '07:00',
-            'horarioFechamento' => '22:00',
-            'diasFuncionamento' => [1, 2, 3, 4, 5], // Segunda a Sexta
-            'duracaoMinima' => 15,
-            'intervaloReservas' => 0,
-            'notificarReservas' => false,
-            'notificarCancelamentos' => false,
-            'notificarConflitos' => false,
-            'backupAutomatico' => false,
-            'ultimoBackup' => null
-        ];
+        $this->_db = Database::getInstance()->getConnection();
     }
     
     /**
      * Lista as configurações atuais
      */
     public function listar() {
-        responderJson($this->_dados['configuracoes']);
+        $stmt = $this->_db->query('SELECT * FROM configuracoes');
+        $configuracoes = $stmt->fetchAll();
+        
+        // Converte para formato chave-valor
+        $config = [];
+        foreach ($configuracoes as $item) {
+            // Trata tipos especiais
+            $valor = $item['valor'];
+            if ($item['chave'] === 'dias_funcionamento') {
+                $valor = array_map('intval', explode(',', $valor));
+            } else if (in_array($item['chave'], [
+                'notificar_reservas',
+                'notificar_cancelamentos',
+                'notificar_conflitos',
+                'backup_automatico'
+            ])) {
+                $valor = $valor === '1' || $valor === 'true';
+            } else if (in_array($item['chave'], [
+                'duracao_minima',
+                'intervalo_reservas'
+            ])) {
+                $valor = (int)$valor;
+            }
+            
+            // Converte nome da chave de snake_case para camelCase
+            $chave = lcfirst(str_replace('_', '', ucwords($item['chave'], '_')));
+            $config[$chave] = $valor;
+        }
+        
+        responderJson($config);
     }
     
     /**
@@ -93,24 +102,41 @@ class GerenciadorConfiguracoes {
             responderErro('O intervalo entre reservas não pode ser negativo');
         }
         
-        // Atualiza as configurações
-        $this->_dados['configuracoes'] = array_merge(
-            $this->_dados['configuracoes'],
-            [
-                'horarioAbertura' => $dados['horarioAbertura'],
-                'horarioFechamento' => $dados['horarioFechamento'],
-                'diasFuncionamento' => $dados['diasFuncionamento'],
-                'duracaoMinima' => (int)$dados['duracaoMinima'],
-                'intervaloReservas' => (int)$dados['intervaloReservas'],
-                'notificarReservas' => (bool)($dados['notificarReservas'] ?? false),
-                'notificarCancelamentos' => (bool)($dados['notificarCancelamentos'] ?? false),
-                'notificarConflitos' => (bool)($dados['notificarConflitos'] ?? false),
-                'backupAutomatico' => (bool)($dados['backupAutomatico'] ?? false)
-            ]
-        );
-        
-        salvarDados($this->_dados);
-        responderJson($this->_dados['configuracoes']);
+        try {
+            $this->_db->beginTransaction();
+            
+            // Prepara a query de atualização
+            $stmt = $this->_db->prepare('
+                INSERT OR REPLACE INTO configuracoes (chave, valor, data_atualizacao)
+                VALUES (?, ?, CURRENT_TIMESTAMP)
+            ');
+            
+            // Atualiza cada configuração
+            $configs = [
+                'horario_abertura' => $dados['horarioAbertura'],
+                'horario_fechamento' => $dados['horarioFechamento'],
+                'dias_funcionamento' => implode(',', $dados['diasFuncionamento']),
+                'duracao_minima' => (int)$dados['duracaoMinima'],
+                'intervalo_reservas' => (int)$dados['intervaloReservas'],
+                'notificar_reservas' => $dados['notificarReservas'] ? '1' : '0',
+                'notificar_cancelamentos' => $dados['notificarCancelamentos'] ? '1' : '0',
+                'notificar_conflitos' => $dados['notificarConflitos'] ? '1' : '0',
+                'backup_automatico' => $dados['backupAutomatico'] ? '1' : '0'
+            ];
+            
+            foreach ($configs as $chave => $valor) {
+                $stmt->execute([$chave, $valor]);
+            }
+            
+            $this->_db->commit();
+            
+            // Retorna as configurações atualizadas
+            $this->listar();
+            
+        } catch (Exception $e) {
+            $this->_db->rollBack();
+            throw $e;
+        }
     }
     
     /**

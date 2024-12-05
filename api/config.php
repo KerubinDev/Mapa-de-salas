@@ -7,7 +7,7 @@
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     header('Access-Control-Allow-Origin: *');
     header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization');
     header('Content-Type: application/json');
     exit(0);
 }
@@ -15,11 +15,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 // Configurações padrão para outras requisições
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
-header('Access-Control-Allow-Headers: Content-Type');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
 header('Content-Type: application/json');
 
 // Constantes do sistema
-define('ARQUIVO_DB', __DIR__ . '/database.json');
 define('HORARIOS_VALIDOS', [
     '07:30 - 08:20', '08:20 - 09:10', '09:10 - 10:00',
     '10:20 - 11:10', '11:10 - 12:00',
@@ -29,33 +28,11 @@ define('HORARIOS_VALIDOS', [
     '21:40 - 22:30'
 ]);
 
-// Verifica permissões do arquivo de banco de dados
-if (!file_exists(ARQUIVO_DB)) {
-    file_put_contents(ARQUIVO_DB, json_encode([
-        'salas' => [],
-        'turmas' => [],
-        'reservas' => []
-    ], JSON_PRETTY_PRINT));
-    chmod(ARQUIVO_DB, 0666);
-}
-
 /**
  * Funções auxiliares
  */
-function lerDados() {
-    $arquivo = __DIR__ . '/database.json';
-    if (!file_exists($arquivo)) {
-        return [];
-    }
-    return json_decode(file_get_contents($arquivo), true) ?: [];
-}
-
-function salvarDados($dados) {
-    $arquivo = __DIR__ . '/database.json';
-    return file_put_contents($arquivo, json_encode($dados, JSON_PRETTY_PRINT));
-}
-
-function responderJson($dados) {
+function responderJson($dados, $codigo = 200) {
+    http_response_code($codigo);
     echo json_encode($dados);
     exit;
 }

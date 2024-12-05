@@ -1,58 +1,41 @@
 <?php
-// Configurações de erro para desenvolvimento
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
+require_once 'includes/seo.php';
 
-// Função para obter o MIME type correto
-function getMimeType($filename) {
-    $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-    $mimeTypes = [
-        'js' => 'application/javascript',
-        'css' => 'text/css',
-        'html' => 'text/html',
-        'json' => 'application/json',
-        'php' => 'text/html'
-    ];
-    return $mimeTypes[$ext] ?? 'text/plain';
-}
-
-// Roteamento básico
-$uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$uri = ltrim($uri, '/');
-
-// Se for um arquivo estático (js, css, etc)
-if (preg_match('/\.(js|css|html)$/', $uri)) {
-    $arquivo = __DIR__ . '/' . $uri;
-    if (file_exists($arquivo)) {
-        $mimeType = getMimeType($arquivo);
-        header('Content-Type: ' . $mimeType);
-        header('Cache-Control: no-cache');
-        readfile($arquivo);
-        exit;
-    }
-}
-
-// Mapeamento de rotas para arquivos PHP
-$rotas = [
-    'api/auth/login' => 'api/auth/login.php',
-    'api/auth/logout' => 'api/auth/logout.php',
-    'api/sala' => 'api/sala.php',
-    'api/turma' => 'api/turma.php',
-    'api/reserva' => 'api/reserva.php'
+$seo = [
+    'titulo' => 'Quadro de Horários - Sistema de Gestão de Salas',
+    'descricao' => 'Visualize o quadro de horários e disponibilidade das salas em tempo real.',
+    'palavrasChave' => 'quadro de horários, salas disponíveis, reservas, horários de aula'
 ];
-
-// Processa a rota
-foreach ($rotas as $rota => $arquivo) {
-    if (strpos($uri, $rota) === 0) {
-        if (file_exists($arquivo)) {
-            require $arquivo;
-            exit;
-        }
+?>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><?php echo $seo['titulo']; ?></title>
+    <?php echo gerarMetasSEO($seo); ?>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/js/temas.js"></script>
+    
+    <!-- Estruturado Schema.org -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Sistema de Gestão de Salas",
+        "applicationCategory": "EducationalApplication",
+        "operatingSystem": "Web Browser",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "BRL"
+        },
+        "description": "<?php echo $seo['descricao']; ?>",
+        "browserRequirements": "Requires JavaScript. Requires HTML5.",
+        "permissions": "Requires authentication for administrative features",
+        "softwareVersion": "1.0.0"
     }
-}
-
-// Se não for uma rota da API, serve o arquivo index.html
-if (!strpos($uri, 'api/')) {
-    header('Content-Type: text/html');
-    require 'index.html';
-} 
+    </script>
+</head>
+<!-- ... resto do código ... --> 

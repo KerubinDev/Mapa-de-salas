@@ -1,6 +1,7 @@
 <?php
 require_once '../config.php';
 require_once 'AuthManager.php';
+require_once __DIR__ . '/../../database/Database.php';
 
 // Verifica se é uma requisição POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -19,25 +20,9 @@ try {
     $auth = AuthManager::getInstance();
     $usuario = $auth->login($dados['email'], $dados['senha']);
     
-    // Gera um token único
-    $token = bin2hex(random_bytes(32));
-    
-    // Atualiza o usuário com o token
-    $dadosDB = lerDados();
-    foreach ($dadosDB['usuarios'] as &$u) {
-        if ($u['id'] === $usuario['id']) {
-            $u['token'] = $token;
-            $usuario['token'] = $token;
-            break;
-        }
-    }
-    salvarDados($dadosDB);
-
-    // Remove informações sensíveis antes de enviar
-    unset($usuario['senha']);
-
-    // Retorna os dados do usuário com o token
+    // Retorna os dados do usuário
     responderJson($usuario);
+    
 } catch (Exception $e) {
     responderErro($e->getMessage(), 401);
 } 

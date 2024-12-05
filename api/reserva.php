@@ -1,14 +1,7 @@
 <?php
 require_once 'config.php';
 require_once 'middleware.php';
-
-// Tratamento específico para OPTIONS (preflight CORS)
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    header('Access-Control-Allow-Origin: *');
-    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type');
-    exit(0);
-}
+require_once __DIR__ . '/../database/Database.php';
 
 // Verifica autenticação para métodos que modificam dados
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
@@ -19,17 +12,28 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
  * Gerenciador de Reservas
  */
 class GerenciadorReserva {
-    private $_dados;
+    private $_db;
     
     public function __construct() {
-        $this->_dados = lerDados();
+        $this->_db = Database::getInstance()->getConnection();
     }
     
     /**
      * Lista todas as reservas cadastradas
      */
     public function listar() {
-        responderJson($this->_dados['reservas']);
+        $sql = '
+            SELECT r.*, s.nome as sala_nome, s.capacidade as sala_capacidade,
+                   t.nome as turma_nome, t.professor as turma_professor
+            FROM reservas r
+            JOIN salas s ON r.sala_id = s.id
+            JOIN turmas t ON r.turma_id = t.id
+            ORDER BY r.data, r.horario_inicio
+        ';
+        
+        $stmt = $this->_db->query($sql);
+        $reservas = $stmt->fetchAll();
+        responderJson($reservas);
     }
     
     /**
@@ -57,42 +61,55 @@ class GerenciadorReserva {
         }
         
         // Verifica se a sala e turma existem
-        $sala = $this->buscarSala($salaId);
-        $turma = $this->buscarTurma($turmaId);
+        $stmt = $this->_db->prepare('
+            SELECT s.*, t.numero_alunos 
+            FROM salas s, turmas t 
+            WHERE s.id = ? AND t.id = ?
+        ');
+        $stmt->execute([$salaId, $turmaId]);
+        $resultado = $stmt->fetch();
         
-        if (!$sala || !$turma) {
+        if (!$resultado) {
             responderErro('Sala ou turma não encontrada');
         }
         
         // Verifica se a sala comporta a turma
-        if ($sala['capacidade'] < $turma['numeroAlunos']) {
+        if ($resultado['capacidade'] < $resultado['numero_alunos']) {
             responderErro('Capacidade da sala insuficiente para a turma');
         }
         
         // Verifica conflitos
-        $conflito = array_filter($this->_dados['reservas'], 
-            function($reserva) use ($data, $horarioInicio, $horarioFim, $salaId, $turmaId, $excluirId) {
-                if ($excluirId && $reserva['id'] === $excluirId) {
-                    return false;
-                }
-                
-                if ($reserva['data'] !== $data) {
-                    return false;
-                }
-                
-                // Verifica se há sobreposição de horários
-                $temSobreposicao = (
-                    ($horarioInicio >= $reserva['horarioInicio'] && $horarioInicio < $reserva['horarioFim']) ||
-                    ($horarioFim > $reserva['horarioInicio'] && $horarioFim <= $reserva['horarioFim']) ||
-                    ($horarioInicio <= $reserva['horarioInicio'] && $horarioFim >= $reserva['horarioFim'])
-                );
-                
-                return $temSobreposicao && 
-                       ($reserva['salaId'] === $salaId || $reserva['turmaId'] === $turmaId);
-            }
-        );
+        $sql = '
+            SELECT COUNT(*) as total
+            FROM reservas
+            WHERE data = ?
+            AND ((horario_inicio >= ? AND horario_inicio < ?) OR
+                 (horario_fim > ? AND horario_fim <= ?) OR
+                 (horario_inicio <= ? AND horario_fim >= ?))
+            AND (sala_id = ? OR turma_id = ?)
+        ';
         
-        responderJson(['conflito' => !empty($conflito)]);
+        if ($excluirId) {
+            $sql .= ' AND id != ?';
+        }
+        
+        $stmt = $this->_db->prepare($sql);
+        $params = [
+            $data,
+            $horarioInicio, $horarioFim,
+            $horarioInicio, $horarioFim,
+            $horarioInicio, $horarioFim,
+            $salaId, $turmaId
+        ];
+        
+        if ($excluirId) {
+            $params[] = $excluirId;
+        }
+        
+        $stmt->execute($params);
+        $resultado = $stmt->fetch();
+        
+        responderJson(['conflito' => $resultado['total'] > 0]);
     }
     
     /**
@@ -120,103 +137,84 @@ class GerenciadorReserva {
             responderErro('O horário de término deve ser posterior ao horário de início');
         }
         
-        // Verifica se a sala e turma existem
-        $sala = $this->buscarSala($dados['salaId']);
-        $turma = $this->buscarTurma($dados['turmaId']);
-        
-        if (!$sala || !$turma) {
-            responderErro('Sala ou turma não encontrada');
+        try {
+            $this->_db->beginTransaction();
+            
+            // Verifica conflitos
+            $params = [
+                'data' => $dados['data'],
+                'horarioInicio' => $dados['horarioInicio'],
+                'horarioFim' => $dados['horarioFim'],
+                'salaId' => $dados['salaId'],
+                'turmaId' => $dados['turmaId']
+            ];
+            
+            $this->verificarConflito($params);
+            
+            // Cria a reserva
+            $stmt = $this->_db->prepare('
+                INSERT INTO reservas (id, sala_id, turma_id, data, horario_inicio, horario_fim)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ');
+            
+            $id = uniqid();
+            $stmt->execute([
+                $id,
+                $dados['salaId'],
+                $dados['turmaId'],
+                $dados['data'],
+                $dados['horarioInicio'],
+                $dados['horarioFim']
+            ]);
+            
+            // Busca a reserva criada com dados relacionados
+            $stmt = $this->_db->prepare('
+                SELECT r.*, s.nome as sala_nome, s.capacidade as sala_capacidade,
+                       t.nome as turma_nome, t.professor as turma_professor
+                FROM reservas r
+                JOIN salas s ON r.sala_id = s.id
+                JOIN turmas t ON r.turma_id = t.id
+                WHERE r.id = ?
+            ');
+            $stmt->execute([$id]);
+            $reserva = $stmt->fetch();
+            
+            $this->_db->commit();
+            responderJson($reserva, 201);
+            
+        } catch (Exception $e) {
+            $this->_db->rollBack();
+            throw $e;
         }
-        
-        // Verifica se a sala comporta a turma
-        if ($sala['capacidade'] < $turma['numeroAlunos']) {
-            responderErro('Capacidade da sala insuficiente para a turma');
-        }
-        
-        // Verifica conflitos
-        $conflito = array_filter($this->_dados['reservas'], 
-            function($reserva) use ($dados) {
-                if ($reserva['data'] !== $dados['data']) {
-                    return false;
-                }
-                
-                // Verifica se há sobreposição de horários
-                $temSobreposicao = (
-                    ($dados['horarioInicio'] >= $reserva['horarioInicio'] && 
-                     $dados['horarioInicio'] < $reserva['horarioFim']) ||
-                    ($dados['horarioFim'] > $reserva['horarioInicio'] && 
-                     $dados['horarioFim'] <= $reserva['horarioFim']) ||
-                    ($dados['horarioInicio'] <= $reserva['horarioInicio'] && 
-                     $dados['horarioFim'] >= $reserva['horarioFim'])
-                );
-                
-                return $temSobreposicao && 
-                       ($reserva['salaId'] === $dados['salaId'] || 
-                        $reserva['turmaId'] === $dados['turmaId']);
-            }
-        );
-        
-        if (!empty($conflito)) {
-            responderErro('Já existe uma reserva para este horário');
-        }
-        
-        // Cria nova reserva
-        $novaReserva = [
-            'id' => uniqid(),
-            'data' => $dados['data'],
-            'horarioInicio' => $dados['horarioInicio'],
-            'horarioFim' => $dados['horarioFim'],
-            'salaId' => $dados['salaId'],
-            'turmaId' => $dados['turmaId'],
-            'dataCriacao' => date('Y-m-d H:i:s')
-        ];
-        
-        $this->_dados['reservas'][] = $novaReserva;
-        salvarDados($this->_dados);
-        
-        // Retorna reserva com dados completos
-        responderJson(array_merge(
-            $novaReserva,
-            [
-                'sala' => $sala,
-                'turma' => $turma
-            ]
-        ));
     }
     
     /**
      * Remove uma reserva
      */
     public function remover($id) {
-        $indice = array_search($id, array_column($this->_dados['reservas'], 'id'));
-        
-        if ($indice === false) {
-            responderErro('Reserva não encontrada', 404);
+        try {
+            $this->_db->beginTransaction();
+            
+            // Remove a reserva
+            $stmt = $this->_db->prepare('DELETE FROM reservas WHERE id = ?');
+            $stmt->execute([$id]);
+            
+            if ($stmt->rowCount() === 0) {
+                responderErro('Reserva não encontrada', 404);
+            }
+            
+            $this->_db->commit();
+            responderJson(['mensagem' => 'Reserva removida com sucesso']);
+            
+        } catch (Exception $e) {
+            $this->_db->rollBack();
+            throw $e;
         }
-        
-        array_splice($this->_dados['reservas'], $indice, 1);
-        salvarDados($this->_dados);
-        
-        responderJson(['mensagem' => 'Reserva removida com sucesso']);
     }
     
     /**
-     * Funções auxiliares
+     * Valida o formato e intervalo do horário
      */
-    private function buscarSala($id) {
-        foreach ($this->_dados['salas'] as $sala) {
-            if ($sala['id'] === $id) return $sala;
-        }
-        return null;
-    }
-    
-    private function buscarTurma($id) {
-        foreach ($this->_dados['turmas'] as $turma) {
-            if ($turma['id'] === $id) return $turma;
-        }
-        return null;
-    }
-    
     private function validarHorario($horario) {
         $partes = explode(':', $horario);
         if (count($partes) !== 2) return false;

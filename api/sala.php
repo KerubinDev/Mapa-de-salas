@@ -1,52 +1,30 @@
 <?php
 require_once 'config.php';
 require_once 'middleware.php';
+require_once __DIR__ . '/../database/Database.php';
 
 // Verifica autenticação para métodos que modificam dados
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
     $usuario = verificarAutenticacao();
 }
 
-// Tratamento específico para OPTIONS (preflight CORS)
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    header('Access-Control-Allow-Origin: *');
-    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type');
-    exit(0);
-}
-
-// Verifica se o diretório tem permissões corretas
-$dir = __DIR__;
-if (!is_writable($dir)) {
-    chmod($dir, 0755);
-}
-
-// Verifica se o arquivo de banco de dados tem permissões corretas
-if (file_exists(ARQUIVO_DB) && !is_writable(ARQUIVO_DB)) {
-    chmod(ARQUIVO_DB, 0666);
-}
-
 /**
  * Gerenciador de Salas
- * Endpoints:
- * GET / - Lista todas as salas
- * POST / - Cria uma nova sala
- * PUT /{id} - Atualiza uma sala existente
- * DELETE /{id} - Remove uma sala
  */
-
 class GerenciadorSala {
-    private $_dados;
+    private $_db;
     
     public function __construct() {
-        $this->_dados = lerDados();
+        $this->_db = Database::getInstance()->getConnection();
     }
     
     /**
      * Lista todas as salas cadastradas
      */
     public function listar() {
-        responderJson($this->_dados['salas']);
+        $stmt = $this->_db->query('SELECT * FROM salas ORDER BY nome');
+        $salas = $stmt->fetchAll();
+        responderJson($salas);
     }
     
     /**
@@ -65,29 +43,41 @@ class GerenciadorSala {
         }
         
         // Verifica se já existe sala com mesmo nome
-        $salaExistente = array_filter($this->_dados['salas'], 
-            function($sala) use ($dados) {
-                return strtolower($sala['nome']) === strtolower($dados['nome']);
-            }
-        );
-        
-        if (!empty($salaExistente)) {
+        $stmt = $this->_db->prepare('SELECT id FROM salas WHERE LOWER(nome) = LOWER(?)');
+        $stmt->execute([$dados['nome']]);
+        if ($stmt->fetch()) {
             responderErro('Já existe uma sala com este nome');
         }
         
-        // Cria nova sala
-        $novaSala = [
-            'id' => uniqid(),
-            'nome' => $dados['nome'],
-            'capacidade' => (int)$dados['capacidade'],
-            'descricao' => $dados['descricao'] ?? '',
-            'dataCriacao' => date('Y-m-d H:i:s')
-        ];
-        
-        $this->_dados['salas'][] = $novaSala;
-        salvarDados($this->_dados);
-        
-        responderJson($novaSala, 201);
+        try {
+            $this->_db->beginTransaction();
+            
+            // Cria nova sala
+            $stmt = $this->_db->prepare('
+                INSERT INTO salas (id, nome, capacidade, descricao)
+                VALUES (?, ?, ?, ?)
+            ');
+            
+            $id = uniqid();
+            $stmt->execute([
+                $id,
+                $dados['nome'],
+                (int)$dados['capacidade'],
+                $dados['descricao'] ?? ''
+            ]);
+            
+            // Busca a sala criada
+            $stmt = $this->_db->prepare('SELECT * FROM salas WHERE id = ?');
+            $stmt->execute([$id]);
+            $sala = $stmt->fetch();
+            
+            $this->_db->commit();
+            responderJson($sala, 201);
+            
+        } catch (Exception $e) {
+            $this->_db->rollBack();
+            throw $e;
+        }
     }
     
     /**
@@ -96,45 +86,72 @@ class GerenciadorSala {
     public function atualizar($id) {
         $dados = json_decode(file_get_contents('php://input'), true);
         
-        // Localiza a sala
-        $indice = array_search($id, array_column($this->_dados['salas'], 'id'));
-        
-        if ($indice === false) {
+        // Verifica se a sala existe
+        $stmt = $this->_db->prepare('SELECT * FROM salas WHERE id = ?');
+        $stmt->execute([$id]);
+        if (!$stmt->fetch()) {
             responderErro('Sala não encontrada', 404);
         }
         
         // Validações
         if (isset($dados['nome'])) {
-            $salaExistente = array_filter($this->_dados['salas'], 
-                function($sala) use ($dados, $id) {
-                    return $sala['id'] !== $id && 
-                           strtolower($sala['nome']) === strtolower($dados['nome']);
-                }
-            );
-            
-            if (!empty($salaExistente)) {
+            $stmt = $this->_db->prepare('
+                SELECT id FROM salas 
+                WHERE LOWER(nome) = LOWER(?) AND id != ?
+            ');
+            $stmt->execute([$dados['nome'], $id]);
+            if ($stmt->fetch()) {
                 responderErro('Já existe uma sala com este nome');
             }
+        }
+        
+        if (isset($dados['capacidade']) && !is_numeric($dados['capacidade'])) {
+            responderErro('Capacidade deve ser um número válido');
+        }
+        
+        try {
+            $this->_db->beginTransaction();
             
-            $this->_dados['salas'][$indice]['nome'] = $dados['nome'];
-        }
-        
-        if (isset($dados['capacidade'])) {
-            if (!is_numeric($dados['capacidade'])) {
-                responderErro('Capacidade deve ser um número válido');
+            // Monta a query de atualização
+            $campos = [];
+            $valores = [];
+            
+            if (isset($dados['nome'])) {
+                $campos[] = 'nome = ?';
+                $valores[] = $dados['nome'];
             }
-            $this->_dados['salas'][$indice]['capacidade'] = 
-                (int)$dados['capacidade'];
+            
+            if (isset($dados['capacidade'])) {
+                $campos[] = 'capacidade = ?';
+                $valores[] = (int)$dados['capacidade'];
+            }
+            
+            if (isset($dados['descricao'])) {
+                $campos[] = 'descricao = ?';
+                $valores[] = $dados['descricao'];
+            }
+            
+            $campos[] = 'data_atualizacao = CURRENT_TIMESTAMP';
+            
+            // Adiciona o ID no final do array de valores
+            $valores[] = $id;
+            
+            $sql = 'UPDATE salas SET ' . implode(', ', $campos) . ' WHERE id = ?';
+            $stmt = $this->_db->prepare($sql);
+            $stmt->execute($valores);
+            
+            // Busca a sala atualizada
+            $stmt = $this->_db->prepare('SELECT * FROM salas WHERE id = ?');
+            $stmt->execute([$id]);
+            $sala = $stmt->fetch();
+            
+            $this->_db->commit();
+            responderJson($sala);
+            
+        } catch (Exception $e) {
+            $this->_db->rollBack();
+            throw $e;
         }
-        
-        if (isset($dados['descricao'])) {
-            $this->_dados['salas'][$indice]['descricao'] = $dados['descricao'];
-        }
-        
-        $this->_dados['salas'][$indice]['dataAtualizacao'] = date('Y-m-d H:i:s');
-        salvarDados($this->_dados);
-        
-        responderJson($this->_dados['salas'][$indice]);
     }
     
     /**
@@ -142,27 +159,30 @@ class GerenciadorSala {
      */
     public function remover($id) {
         // Verifica se existem reservas para esta sala
-        $reservasExistentes = array_filter($this->_dados['reservas'], 
-            function($reserva) use ($id) {
-                return $reserva['salaId'] === $id;
-            }
-        );
-        
-        if (!empty($reservasExistentes)) {
+        $stmt = $this->_db->prepare('SELECT id FROM reservas WHERE sala_id = ?');
+        $stmt->execute([$id]);
+        if ($stmt->fetch()) {
             responderErro('Não é possível remover uma sala com reservas ativas');
         }
         
-        // Localiza e remove a sala
-        $indice = array_search($id, array_column($this->_dados['salas'], 'id'));
-        
-        if ($indice === false) {
-            responderErro('Sala não encontrada', 404);
+        try {
+            $this->_db->beginTransaction();
+            
+            // Remove a sala
+            $stmt = $this->_db->prepare('DELETE FROM salas WHERE id = ?');
+            $stmt->execute([$id]);
+            
+            if ($stmt->rowCount() === 0) {
+                responderErro('Sala não encontrada', 404);
+            }
+            
+            $this->_db->commit();
+            responderJson(['mensagem' => 'Sala removida com sucesso']);
+            
+        } catch (Exception $e) {
+            $this->_db->rollBack();
+            throw $e;
         }
-        
-        array_splice($this->_dados['salas'], $indice, 1);
-        salvarDados($this->_dados);
-        
-        responderJson(['mensagem' => 'Sala removida com sucesso']);
     }
 }
 

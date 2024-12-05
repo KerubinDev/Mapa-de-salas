@@ -1,33 +1,21 @@
 <?php
 require_once 'config.php';
 require_once 'middleware.php';
-
-// Define o tipo de conteúdo como JSON
-header('Content-Type: application/json');
-
-// Tratamento específico para OPTIONS (preflight CORS)
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    header('Access-Control-Allow-Origin: *');
-    header('Access-Control-Allow-Methods: POST, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type, Authorization');
-    exit(0);
-}
+require_once __DIR__ . '/../database/Database.php';
 
 // Verifica autenticação
 try {
     $usuario = verificarAutenticacao();
     if ($usuario['tipo'] !== 'admin') {
-        http_response_code(403);
-        echo json_encode(['erro' => 'Acesso negado']);
-        exit;
+        responderErro('Acesso negado', 403);
     }
 } catch (Exception $e) {
-    http_response_code(401);
-    echo json_encode(['erro' => 'Não autorizado']);
-    exit;
+    responderErro($e->getMessage(), $e->getCode());
 }
 
 try {
+    $db = Database::getInstance()->getConnection();
+    
     // Cria diretório de backup se não existir
     $backupDir = __DIR__ . '/backups';
     if (!file_exists($backupDir)) {
@@ -36,41 +24,76 @@ try {
 
     // Gera nome do arquivo de backup
     $data = date('Y-m-d_H-i-s');
-    $nomeArquivo = "backup_{$data}.json";
+    $nomeArquivo = "backup_{$data}.sql";
     $caminhoCompleto = "{$backupDir}/{$nomeArquivo}";
 
-    // Lê os dados atuais
-    $dados = lerDados();
+    // Inicia o arquivo de backup
+    $backup = "-- Backup gerado em " . date('Y-m-d H:i:s') . "\n";
+    $backup .= "-- Usuário: {$usuario['nome']}\n\n";
 
-    // Adiciona metadados ao backup
-    $backup = [
-        'data' => date('Y-m-d H:i:s'),
-        'usuario' => $usuario['nome'],
-        'dados' => $dados
-    ];
+    // Tabelas para backup
+    $tabelas = ['usuarios', 'salas', 'turmas', 'reservas', 'configuracoes', 'logs'];
+
+    foreach ($tabelas as $tabela) {
+        $backup .= "\n-- Dados da tabela {$tabela}\n";
+        
+        // Obtém a estrutura da tabela
+        $stmt = $db->query("SELECT sql FROM sqlite_master WHERE type='table' AND name='{$tabela}'");
+        $estrutura = $stmt->fetch();
+        $backup .= $estrutura['sql'] . ";\n\n";
+
+        // Obtém os dados da tabela
+        $stmt = $db->query("SELECT * FROM {$tabela}");
+        $dados = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        foreach ($dados as $registro) {
+            $colunas = array_keys($registro);
+            $valores = array_map(function($valor) use ($db) {
+                if ($valor === null) return 'NULL';
+                return $db->quote($valor);
+            }, $registro);
+
+            $backup .= "INSERT INTO {$tabela} (" . 
+                      implode(', ', $colunas) . 
+                      ") VALUES (" . 
+                      implode(', ', $valores) . 
+                      ");\n";
+        }
+    }
 
     // Salva o arquivo de backup
-    if (!file_put_contents($caminhoCompleto, json_encode($backup, JSON_PRETTY_PRINT))) {
+    if (!file_put_contents($caminhoCompleto, $backup)) {
         throw new Exception('Erro ao salvar arquivo de backup');
     }
 
     // Atualiza a data do último backup nas configurações
-    if (!isset($dados['configuracoes'])) {
-        $dados['configuracoes'] = [];
-    }
-    $dados['configuracoes']['ultimoBackup'] = date('Y-m-d H:i:s');
-    salvarDados($dados);
+    $stmt = $db->prepare('
+        INSERT OR REPLACE INTO configuracoes (chave, valor, data_atualizacao)
+        VALUES (?, ?, CURRENT_TIMESTAMP)
+    ');
+    $stmt->execute(['ultimo_backup', date('Y-m-d H:i:s')]);
 
     // Registra o backup no log
-    $auth = AuthManager::getInstance();
-    $auth->registrarLog($usuario['id'], 'backup', "Backup realizado: {$nomeArquivo}");
+    $stmt = $db->prepare('
+        INSERT INTO logs (id, usuario_id, acao, detalhes, ip, user_agent)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ');
+    $stmt->execute([
+        uniqid(),
+        $usuario['id'],
+        'backup',
+        "Backup realizado: {$nomeArquivo}",
+        $_SERVER['REMOTE_ADDR'] ?? '',
+        $_SERVER['HTTP_USER_AGENT'] ?? ''
+    ]);
 
     // Retorna sucesso
     responderJson([
         'mensagem' => 'Backup realizado com sucesso',
         'arquivo' => $nomeArquivo,
-        'data' => $dados['configuracoes']['ultimoBackup']
+        'data' => date('Y-m-d H:i:s')
     ]);
+
 } catch (Exception $e) {
     responderErro($e->getMessage(), $e->getCode() ?: 400);
 } 
