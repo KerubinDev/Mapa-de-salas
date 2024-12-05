@@ -36,18 +36,34 @@ if (!$usuario) {
     responderErro('Usuário não encontrado', 401);
 }
 
-// Verifica a senha
-if (!password_verify($dados['senha'], $usuario['senha'])) {
+// Gera o hash da senha fornecida usando SHA-256
+$senhaHash = hash('sha256', $dados['senha']);
+
+// Verifica se o hash da senha corresponde
+if ($senhaHash !== $usuario['senha']) {
+    // Log para debug
+    if (isset($dados['_debug']) && $dados['_debug']) {
+        error_log("Debug - Comparação de senhas:");
+        error_log("Hash recebido: " . $senhaHash);
+        error_log("Hash armazenado: " . $usuario['senha']);
+    }
     responderErro('Senha incorreta', 401);
 }
 
-// Gera um token JWT (simulado por enquanto)
-$token = base64_encode(json_encode([
-    'id' => $usuario['id'],
-    'email' => $usuario['email'],
-    'tipo' => $usuario['tipo'],
-    'exp' => time() + JWT_EXPIRATION
-]));
+// Gera um novo token
+$token = bin2hex(random_bytes(32));
+
+// Atualiza o token do usuário no banco
+foreach ($usuarios as &$u) {
+    if ($u['id'] === $usuario['id']) {
+        $u['token'] = $token;
+        $u['ultimoLogin'] = date('Y-m-d H:i:s');
+        break;
+    }
+}
+
+// Salva as alterações no banco
+file_put_contents(DB_FILE, json_encode($db, JSON_PRETTY_PRINT));
 
 // Remove dados sensíveis antes de retornar
 unset($usuario['senha']);

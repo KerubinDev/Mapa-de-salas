@@ -106,12 +106,20 @@ class GerenciadorLogin {
 
     // Função auxiliar para gerar hash (apenas para debug)
     async _gerarHash(senha) {
-        // Função para gerar hash SHA-256 da senha
         const encoder = new TextEncoder();
         const data = encoder.encode(senha);
         const hashBuffer = await crypto.subtle.digest('SHA-256', data);
         const hashArray = Array.from(new Uint8Array(hashBuffer));
-        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+        
+        // Log para debug
+        console.log('DEBUG - Hash gerado:', {
+            senha: senha,
+            hash: hashHex,
+            hashEsperado: '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9'
+        });
+        
+        return hashHex;
     }
 }
 
