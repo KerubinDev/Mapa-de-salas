@@ -35,7 +35,12 @@ class GerenciadorLogin {
                 email: email.trim(),
                 senha: senha,
                 timestamp: new Date().getTime(),
-                _debug: true  // Flag para indicar modo debug
+                _debug: true,
+                _debugInfo: {
+                    senhaDigitada: senha,
+                    emailDigitado: email,
+                    hashLocal: await this._gerarHash(senha)
+                }
             };
 
             console.log('Payload da requisição:', 
@@ -46,7 +51,8 @@ class GerenciadorLogin {
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
-                    'X-Debug-Mode': 'true'  // Header adicional para debug
+                    'X-Debug-Mode': 'true',
+                    'X-Auth-Debug': 'true'
                 },
                 body: JSON.stringify(dadosRequisicao),
                 credentials: 'include'
@@ -61,10 +67,14 @@ class GerenciadorLogin {
             console.log('Dados da resposta:', dados);
 
             if (dados._debug) {
-                console.log('DEBUG - Comparação de senhas:', {
+                console.log('DEBUG - Detalhes da autenticação:', {
                     senhaDigitada: senha,
                     senhaArmazenada: dados._senhaArmazenada,
-                    corresponde: dados._senhasCorrespondem
+                    hashLocal: dados._hashLocal,
+                    hashServidor: dados._hashServidor,
+                    algoritmoHash: dados._algoritmoHash,
+                    corresponde: dados._senhasCorrespondem,
+                    tempoProcessamento: dados._tempoProcessamento
                 });
             }
 
@@ -108,6 +118,15 @@ class GerenciadorLogin {
 
         const dados = await resposta.json();
         return dados.sucesso;
+    }
+
+    // Função auxiliar para gerar hash (apenas para debug)
+    async _gerarHash(senha) {
+        const encoder = new TextEncoder();
+        const data = encoder.encode(senha);
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     }
 }
 
