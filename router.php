@@ -37,7 +37,23 @@ $rotas = [
     'GET:/auth/perfil' => 'api/auth/perfil.php',
     'PUT:/auth/perfil' => 'api/auth/perfil.php',
     
-    // Outras rotas...
+    // Rotas de salas
+    'GET:/sala' => 'api/sala.php',
+    'POST:/sala' => 'api/sala.php',
+    'PUT:/sala' => 'api/sala.php',
+    'DELETE:/sala' => 'api/sala.php',
+    
+    // Rotas de turmas
+    'GET:/turma' => 'api/turma.php',
+    'POST:/turma' => 'api/turma.php',
+    'PUT:/turma' => 'api/turma.php',
+    'DELETE:/turma' => 'api/turma.php',
+    
+    // Rotas de reservas
+    'GET:/reserva' => 'api/reserva.php',
+    'POST:/reserva' => 'api/reserva.php',
+    'PUT:/reserva' => 'api/reserva.php',
+    'DELETE:/reserva' => 'api/reserva.php'
 ];
 
 // Mapeia extensões para tipos MIME
