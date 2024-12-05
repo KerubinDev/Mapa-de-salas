@@ -1,0 +1,67 @@
+/* Estilos globais */
+:root {
+    --primary-color: #1d4ed8;
+    --secondary-color: #3b82f6;
+    --background-color: #f3f4f6;
+    --text-color: #1f2937;
+    --error-color: #dc2626;
+    --success-color: #059669;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    line-height: 1.5;
+    color: var(--text-color);
+    background-color: var(--background-color);
+    margin: 0;
+    padding: 0;
+}
+
+#app {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+h1 {
+    color: var(--primary-color);
+    margin-bottom: 2rem;
+}
+
+/* Estilos da área administrativa */
+.admin-container {
+    background-color: white;
+    border-radius: 0.5rem;
+    padding: 2rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.admin-nav {
+    margin-bottom: 2rem;
+    border-bottom: 1px solid #e5e7eb;
+    padding-bottom: 1rem;
+}
+
+.admin-nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    gap: 1rem;
+}
+
+.admin-nav a {
+    color: var(--text-color);
+    text-decoration: none;
+    padding: 0.5rem 1rem;
+    border-radius: 0.25rem;
+}
+
+.admin-nav a:hover {
+    background-color: var(--background-color);
+}
+
+.admin-nav a.active {
+    background-color: var(--primary-color);
+    color: white;
+} 

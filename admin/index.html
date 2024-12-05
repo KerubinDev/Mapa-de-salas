@@ -8,8 +8,22 @@
 </head>
 <body>
     <div id="app">
-        <h1>Área Administrativa</h1>
-        <!-- Conteúdo da área administrativa -->
+        <div class="admin-container">
+            <h1>Área Administrativa</h1>
+            
+            <nav class="admin-nav">
+                <ul>
+                    <li><a href="#salas" class="active">Salas</a></li>
+                    <li><a href="#turmas">Turmas</a></li>
+                    <li><a href="#reservas">Reservas</a></li>
+                    <li><a href="#usuarios">Usuários</a></li>
+                </ul>
+            </nav>
+            
+            <div id="conteudo">
+                <!-- O conteúdo será carregado dinamicamente -->
+            </div>
+        </div>
     </div>
     <script src="/js/admin.js"></script>
 </body>
