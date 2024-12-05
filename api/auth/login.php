@@ -16,6 +16,7 @@ try {
     }
     
     // Busca o usuário pelo email
+    $db = JsonDatabase::getInstance();
     $usuarios = $db->query('usuarios', ['email' => $dados['email']]);
     $usuario = reset($usuarios);
     
@@ -34,38 +35,11 @@ try {
     
     // Remove dados sensíveis
     unset($usuario['senha']);
+    unset($usuario['tokenRecuperacao']);
+    unset($usuario['tokenExpiracao']);
     
     // Registra o login no log
-    $db->insert('logs', [
-        'usuarioId' => $usuario['id'],
-        'acao' => 'login',
-        'detalhes' => 'Login realizado com sucesso',
-        'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
-        'userAgent' => $_SERVER['HTTP_USER_AGENT'] ?? ''
-    ]);
-    
-    // Busca estatísticas do usuário
-    if ($usuario['tipo'] === 'professor') {
-        $reservas = $db->query('reservas', ['professorId' => $usuario['id']]);
-        $salas = array_unique(array_column($reservas, 'salaId'));
-        
-        $usuario['estatisticas'] = [
-            'totalReservas' => count($reservas),
-            'totalSalas' => count($salas)
-        ];
-    }
-    
-    // Busca últimas atividades
-    $logs = array_filter($db->getData('logs'), function($log) use ($usuario) {
-        return $log['usuarioId'] === $usuario['id'];
-    });
-    
-    // Ordena logs por data decrescente e pega os 5 últimos
-    usort($logs, function($a, $b) {
-        return strtotime($b['dataCriacao']) - strtotime($a['dataCriacao']);
-    });
-    
-    $usuario['ultimasAtividades'] = array_slice($logs, 0, 5);
+    registrarLog($usuario['id'], 'login', 'Login realizado com sucesso');
     
     // Define permissões do usuário
     $usuario['permissoes'] = [
