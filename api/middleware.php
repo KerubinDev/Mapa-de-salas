@@ -2,7 +2,42 @@
 require_once 'config.php';
 
 /**
- * Verifica se o usuário está autenticado
+ * Configura os cabeçalhos CORS
+ */
+function configurarCORS() {
+    // Em desenvolvimento, permite todas as origens
+    if (APP_ENV === 'development') {
+        header('Access-Control-Allow-Origin: *');
+    } else {
+        // Em produção, permite apenas origens específicas
+        $origensPermitidas = [
+            'https://seu-dominio.com',
+            'https://app.seu-dominio.com'
+        ];
+        
+        $origem = $_SERVER['HTTP_ORIGIN'] ?? '';
+        if (in_array($origem, $origensPermitidas)) {
+            header("Access-Control-Allow-Origin: $origem");
+        }
+    }
+
+    // Configura outros cabeçalhos CORS
+    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization');
+    header('Access-Control-Max-Age: 86400'); // 24 horas
+    
+    // Permite credenciais
+    header('Access-Control-Allow-Credentials: true');
+    
+    // Responde imediatamente para requisições OPTIONS
+    if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+        http_response_code(204);
+        exit();
+    }
+}
+
+/**
+ * Verifica autenticação do usuário
  */
 function verificarAutenticacao() {
     $headers = getallheaders();
@@ -15,7 +50,7 @@ function verificarAutenticacao() {
     $token = $matches[1];
     $db = JsonDatabase::getInstance();
     
-    // Busca o usuário pelo token
+    // Busca usuário pelo token
     $usuarios = $db->query('usuarios', ['token' => $token]);
     $usuario = reset($usuarios);
     
@@ -24,25 +59,6 @@ function verificarAutenticacao() {
     }
     
     return $usuario;
-}
-
-/**
- * Trata requisições CORS
- */
-function tratarCORS() {
-    // Permite acesso de qualquer origem em desenvolvimento
-    if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-        header('Access-Control-Allow-Origin: *');
-        header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-        header('Access-Control-Allow-Headers: Content-Type, Authorization');
-        header('Access-Control-Max-Age: 86400'); // 24 horas
-        exit(0);
-    }
-
-    // Configurações para outras requisições
-    header('Access-Control-Allow-Origin: *');
-    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
-    header('Access-Control-Allow-Headers: Content-Type, Authorization');
 }
 
 /**
@@ -84,6 +100,6 @@ function registrarLog($usuarioId, $acao, $detalhes) {
     ]);
 }
 
-// Aplica tratamento CORS para todas as requisições
-tratarCORS();
+// Aplica configurações CORS para todas as requisições
+configurarCORS();
  
