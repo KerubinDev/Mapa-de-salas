@@ -33,7 +33,7 @@ if ($metodo === 'GET') {
     // Mapeia URLs para arquivos HTML
     $htmlFiles = [
         '/' => '/index.html',
-        '/admin' => '/admin/index.html',
+        '/admin' => '/admin/adminpanel.html', // Alterado para usar adminpanel.html
         '/coordenador' => '/coordenador/index.html',
         '/login' => '/login.html'
     ];
@@ -51,8 +51,21 @@ if ($metodo === 'GET') {
 // Verifica se é um arquivo estático
 $ext = pathinfo($uri, PATHINFO_EXTENSION);
 if ($ext && file_exists(__DIR__ . $uri)) {
-    $contentType = $mimeTypes[$ext] ?? 'application/octet-stream';
-    header("Content-Type: $contentType");
+    // Força o tipo MIME correto para arquivos comuns
+    switch ($ext) {
+        case 'css':
+            header('Content-Type: text/css');
+            break;
+        case 'js':
+            header('Content-Type: application/javascript');
+            break;
+        case 'html':
+            header('Content-Type: text/html');
+            break;
+        default:
+            $contentType = $mimeTypes[$ext] ?? 'application/octet-stream';
+            header("Content-Type: $contentType");
+    }
     readfile(__DIR__ . $uri);
     exit;
 }
