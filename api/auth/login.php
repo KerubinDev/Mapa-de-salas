@@ -1,6 +1,6 @@
 <?php
-require_once '../config.php';
-require_once '../middleware.php';
+require_once __DIR__ . '/../../api/config.php';
+require_once __DIR__ . '/../../api/middleware.php';
 
 // Verifica se é uma requisição POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
