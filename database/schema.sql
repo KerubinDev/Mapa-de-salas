@@ -6,10 +6,37 @@ CREATE TABLE IF NOT EXISTS usuarios (
     senha TEXT NOT NULL,
     tipo TEXT NOT NULL DEFAULT 'usuario',
     token TEXT,
-    data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
-    data_atualizacao DATETIME,
     token_recuperacao TEXT,
-    token_expiracao DATETIME
+    token_expiracao DATETIME,
+    data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
+    data_atualizacao DATETIME
+);
+
+-- Tabela de Sessões
+CREATE TABLE IF NOT EXISTS sessoes (
+    id TEXT PRIMARY KEY,
+    usuario_id TEXT NOT NULL,
+    token TEXT NOT NULL,
+    ip TEXT,
+    user_agent TEXT,
+    data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
+    data_expiracao DATETIME,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+);
+
+-- Tabela de Logs
+CREATE TABLE IF NOT EXISTS logs (
+    id TEXT PRIMARY KEY,
+    usuario_id TEXT,
+    acao TEXT NOT NULL,
+    detalhes TEXT,
+    ip TEXT,
+    user_agent TEXT,
+    browser TEXT,
+    sistema_operacional TEXT,
+    dispositivo TEXT,
+    data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL
 );
 
 -- Tabela de Salas
@@ -43,8 +70,8 @@ CREATE TABLE IF NOT EXISTS reservas (
     horario_fim TIME NOT NULL,
     data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
     data_atualizacao DATETIME,
-    FOREIGN KEY (sala_id) REFERENCES salas(id),
-    FOREIGN KEY (turma_id) REFERENCES turmas(id)
+    FOREIGN KEY (sala_id) REFERENCES salas(id) ON DELETE CASCADE,
+    FOREIGN KEY (turma_id) REFERENCES turmas(id) ON DELETE CASCADE
 );
 
 -- Tabela de Configurações
@@ -54,35 +81,40 @@ CREATE TABLE IF NOT EXISTS configuracoes (
     data_atualizacao DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
--- Tabela de Logs
-CREATE TABLE IF NOT EXISTS logs (
-    id TEXT PRIMARY KEY,
-    usuario_id TEXT,
-    acao TEXT NOT NULL,
-    detalhes TEXT,
-    ip TEXT,
-    user_agent TEXT,
-    data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
-    browser TEXT,
-    sistema_operacional TEXT,
-    dispositivo TEXT,
-    FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
-);
-
 -- Índices
-CREATE INDEX IF NOT EXISTS idx_reservas_sala ON reservas(sala_id);
-CREATE INDEX IF NOT EXISTS idx_reservas_turma ON reservas(turma_id);
-CREATE INDEX IF NOT EXISTS idx_reservas_data ON reservas(data);
-CREATE INDEX IF NOT EXISTS idx_logs_usuario ON logs(usuario_id);
-CREATE INDEX IF NOT EXISTS idx_logs_data ON logs(data_criacao);
 CREATE INDEX IF NOT EXISTS idx_usuarios_email ON usuarios(email);
 CREATE INDEX IF NOT EXISTS idx_usuarios_token ON usuarios(token);
 CREATE INDEX IF NOT EXISTS idx_usuarios_token_recuperacao ON usuarios(token_recuperacao);
+CREATE INDEX IF NOT EXISTS idx_sessoes_token ON sessoes(token);
+CREATE INDEX IF NOT EXISTS idx_sessoes_usuario ON sessoes(usuario_id);
+CREATE INDEX IF NOT EXISTS idx_logs_usuario ON logs(usuario_id);
+CREATE INDEX IF NOT EXISTS idx_logs_data ON logs(data_criacao);
+CREATE INDEX IF NOT EXISTS idx_reservas_sala ON reservas(sala_id);
+CREATE INDEX IF NOT EXISTS idx_reservas_turma ON reservas(turma_id);
+CREATE INDEX IF NOT EXISTS idx_reservas_data ON reservas(data);
 
--- Inserir usuário admin padrão
+-- Triggers
+CREATE TRIGGER IF NOT EXISTS atualizar_data_modificacao_usuario
+AFTER UPDATE ON usuarios
+BEGIN
+    UPDATE usuarios SET data_atualizacao = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS limpar_sessoes_expiradas
+AFTER INSERT ON sessoes
+BEGIN
+    DELETE FROM sessoes WHERE data_expiracao < CURRENT_TIMESTAMP;
+END;
+
+-- Inserir usuário admin padrão se não existir
 INSERT OR IGNORE INTO usuarios (id, nome, email, senha, tipo) 
-VALUES ('admin', 'Administrador', 'admin@sistema.local', 
-        '$2y$10$YourHashedPasswordHere', 'admin');
+VALUES (
+    'admin',
+    'Administrador',
+    'admin@sistema.local',
+    '$2y$10$YourHashedPasswordHere',
+    'admin'
+);
 
 -- Configurações padrão
 INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES
@@ -95,36 +127,3 @@ INSERT OR IGNORE INTO configuracoes (chave, valor) VALUES
 ('notificar_cancelamentos', '0'),
 ('notificar_conflitos', '0'),
 ('backup_automatico', '0');
-
--- Cria tabela de sessões
-CREATE TABLE IF NOT EXISTS sessoes (
-    id TEXT PRIMARY KEY,
-    usuario_id TEXT NOT NULL,
-    token TEXT NOT NULL,
-    ip TEXT,
-    user_agent TEXT,
-    data_criacao DATETIME DEFAULT CURRENT_TIMESTAMP,
-    data_expiracao DATETIME,
-    FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
-);
-
--- Cria índices para a tabela de sessões
-CREATE INDEX IF NOT EXISTS idx_sessoes_usuario ON sessoes(usuario_id);
-CREATE INDEX IF NOT EXISTS idx_sessoes_token ON sessoes(token);
-CREATE INDEX IF NOT EXISTS idx_sessoes_expiracao ON sessoes(data_expiracao);
-
--- Adiciona triggers para limpeza automática
-CREATE TRIGGER IF NOT EXISTS limpar_sessoes_expiradas
-AFTER INSERT ON sessoes
-BEGIN
-    DELETE FROM sessoes WHERE data_expiracao < CURRENT_TIMESTAMP;
-END;
-
-CREATE TRIGGER IF NOT EXISTS limpar_tokens_recuperacao
-AFTER UPDATE OF token_recuperacao ON usuarios
-BEGIN
-    UPDATE usuarios 
-    SET token_recuperacao = NULL, 
-        token_expiracao = NULL 
-    WHERE token_expiracao < CURRENT_TIMESTAMP;
-END;
