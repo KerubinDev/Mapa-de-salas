@@ -5,18 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Painel Administrativo - Sistema de Gestão de Salas</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="../js/temas.js"></script>
+    <script>
+        // Configuração inicial do Tailwind
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#1d4ed8',
+                        secondary: '#60a5fa',
+                        background: '#f9fafb',
+                        textColor: '#111827'
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="../js/temas.js" defer></script>
 </head>
-<body class="bg-background">
+<body class="bg-gray-100">
     <!-- Cabeçalho -->
-    <header class="bg-primary text-white shadow-lg">
+    <header class="bg-blue-700 text-white shadow-lg">
         <nav class="container mx-auto px-4 py-4">
             <div class="flex justify-between items-center">
                 <h1 class="text-2xl font-bold">Painel Administrativo</h1>
                 <div class="space-x-4">
                     <span id="nomeUsuario" class="text-sm"></span>
                     <button id="btnSair" 
-                            class="bg-white text-primary px-4 py-2 rounded-lg 
+                            class="bg-white text-blue-700 px-4 py-2 rounded-lg 
                                    hover:bg-opacity-90 transition">
                         Sair
                     </button>
@@ -26,31 +41,31 @@
     </header>
 
     <!-- Menu Lateral -->
-    <div class="flex">
-        <aside class="w-64 bg-white shadow-lg h-screen">
+    <div class="flex min-h-screen">
+        <aside class="w-64 bg-white shadow-lg">
             <nav class="p-4">
                 <ul class="space-y-2">
                     <li>
                         <a href="/admin/salas" 
-                           class="block p-2 hover:bg-gray-100 rounded-lg">
+                           class="block p-2 hover:bg-gray-100 rounded-lg text-gray-700">
                             Gerenciar Salas
                         </a>
                     </li>
                     <li>
                         <a href="/admin/reservas" 
-                           class="block p-2 hover:bg-gray-100 rounded-lg">
+                           class="block p-2 hover:bg-gray-100 rounded-lg text-gray-700">
                             Gerenciar Reservas
                         </a>
                     </li>
                     <li>
                         <a href="/admin/usuarios" 
-                           class="block p-2 hover:bg-gray-100 rounded-lg">
+                           class="block p-2 hover:bg-gray-100 rounded-lg text-gray-700">
                             Gerenciar Usuários
                         </a>
                     </li>
                     <li>
                         <a href="/admin/configuracoes" 
-                           class="block p-2 hover:bg-gray-100 rounded-lg">
+                           class="block p-2 hover:bg-gray-100 rounded-lg text-gray-700">
                             Configurações
                         </a>
                     </li>
@@ -59,20 +74,20 @@
         </aside>
 
         <!-- Conteúdo Principal -->
-        <main class="flex-1 p-8">
+        <main class="flex-1 p-8 bg-gray-50">
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <!-- Cards de Resumo -->
                 <div class="bg-white p-6 rounded-lg shadow">
-                    <h3 class="text-lg font-bold mb-2">Total de Salas</h3>
-                    <p class="text-3xl font-bold text-primary" id="totalSalas">0</p>
+                    <h3 class="text-lg font-bold mb-2 text-gray-800">Total de Salas</h3>
+                    <p class="text-3xl font-bold text-blue-700" id="totalSalas">0</p>
                 </div>
                 <div class="bg-white p-6 rounded-lg shadow">
-                    <h3 class="text-lg font-bold mb-2">Reservas Ativas</h3>
-                    <p class="text-3xl font-bold text-primary" id="totalReservas">0</p>
+                    <h3 class="text-lg font-bold mb-2 text-gray-800">Reservas Ativas</h3>
+                    <p class="text-3xl font-bold text-blue-700" id="totalReservas">0</p>
                 </div>
                 <div class="bg-white p-6 rounded-lg shadow">
-                    <h3 class="text-lg font-bold mb-2">Usuários Ativos</h3>
-                    <p class="text-3xl font-bold text-primary" id="totalUsuarios">0</p>
+                    <h3 class="text-lg font-bold mb-2 text-gray-800">Usuários Ativos</h3>
+                    <p class="text-3xl font-bold text-blue-700" id="totalUsuarios">0</p>
                 </div>
             </div>
         </main>
