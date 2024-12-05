@@ -1,4 +1,12 @@
 <?php
+require_once __DIR__ . '/api/config.php';
+
+// Configurações de erro para desenvolvimento
+if (APP_DEBUG) {
+    ini_set('display_errors', 1);
+    error_reporting(E_ALL);
+}
+
 // Mapeia extensões para tipos MIME
 $mimeTypes = [
     'js' => 'application/javascript',
@@ -11,13 +19,41 @@ $mimeTypes = [
     'gif' => 'image/gif'
 ];
 
-// Obtém o caminho da requisição
+// Obtém o método e caminho da requisição
+$metodo = $_SERVER['REQUEST_METHOD'];
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-$ext = pathinfo($uri, PATHINFO_EXTENSION);
+$uri = '/' . trim($uri, '/');
 
-// Se for um arquivo estático e existir
+// Define as rotas da API
+$rotas = [
+    // Rotas de autenticação
+    'POST:/api/auth/login' => 'api/auth/login.php',
+    'POST:/api/auth/logout' => 'api/auth/logout.php',
+    'GET:/api/auth/perfil' => 'api/auth/perfil.php',
+    'PUT:/api/auth/perfil' => 'api/auth/perfil.php',
+    
+    // Rotas de salas
+    'GET:/api/sala' => 'api/sala.php',
+    'POST:/api/sala' => 'api/sala.php',
+    'PUT:/api/sala' => 'api/sala.php',
+    'DELETE:/api/sala' => 'api/sala.php',
+    
+    // Rotas de turmas
+    'GET:/api/turma' => 'api/turma.php',
+    'POST:/api/turma' => 'api/turma.php',
+    'PUT:/api/turma' => 'api/turma.php',
+    'DELETE:/api/turma' => 'api/turma.php',
+    
+    // Rotas de reservas
+    'GET:/api/reserva' => 'api/reserva.php',
+    'POST:/api/reserva' => 'api/reserva.php',
+    'PUT:/api/reserva' => 'api/reserva.php',
+    'DELETE:/api/reserva' => 'api/reserva.php'
+];
+
+// Verifica se é um arquivo estático
+$ext = pathinfo($uri, PATHINFO_EXTENSION);
 if ($ext && file_exists(__DIR__ . $uri)) {
-    // Define o tipo MIME correto
     if (isset($mimeTypes[$ext])) {
         header('Content-Type: ' . $mimeTypes[$ext]);
     }
@@ -25,25 +61,18 @@ if ($ext && file_exists(__DIR__ . $uri)) {
     exit;
 }
 
-// Mapeia rotas da API
-$rotas = [
-    '/api/auth/login' => '/api/auth/login.php',
-    '/api/auth/logout' => '/api/auth/logout.php',
-    '/api/auth/registro' => '/api/auth/registro.php',
-    '/api/auth/perfil' => '/api/auth/perfil.php',
-    '/api/sala' => '/api/sala.php',
-    '/api/turma' => '/api/turma.php',
-    '/api/reserva' => '/api/reserva.php'
-];
-
-// Verifica se a rota existe
-$rota = $rotas[$uri] ?? null;
-if ($rota) {
-    include __DIR__ . $rota;
-    exit;
+// Verifica se é uma rota da API
+$rotaChave = "{$metodo}:{$uri}";
+if (isset($rotas[$rotaChave])) {
+    $arquivo = __DIR__ . '/' . $rotas[$rotaChave];
+    if (file_exists($arquivo)) {
+        require $arquivo;
+        exit;
+    }
 }
 
-// Se não for uma rota conhecida, retorna 404
+// Se chegou aqui, retorna 404
 http_response_code(404);
+header('Content-Type: application/json');
 echo json_encode(['erro' => 'Rota não encontrada']);
  

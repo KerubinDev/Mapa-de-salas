@@ -51,7 +51,11 @@ try {
         'fazerBackup' => $usuario['tipo'] === 'admin'
     ];
     
-    responderJson($usuario);
+    // Retorna os dados do usuário
+    responderJson([
+        'usuario' => $usuario,
+        'token' => $usuario['token']
+    ]);
     
 } catch (Exception $e) {
     responderErro($e->getMessage(), $e->getCode() ?: 400);
