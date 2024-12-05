@@ -1,17 +1,14 @@
 <?php
 class JsonDatabase {
     private static $_instance = null;
+    private $_dataFile;
     private $_data;
-    private $_arquivo;
     
     private function __construct() {
-        $this->_arquivo = __DIR__ . '/database.json';
-        $this->_carregarDados();
+        $this->_dataFile = __DIR__ . '/data.json';
+        $this->_loadData();
     }
     
-    /**
-     * Retorna a instância única do banco de dados
-     */
     public static function getInstance() {
         if (self::$_instance === null) {
             self::$_instance = new self();
@@ -19,11 +16,8 @@ class JsonDatabase {
         return self::$_instance;
     }
     
-    /**
-     * Carrega os dados do arquivo JSON
-     */
-    private function _carregarDados() {
-        if (!file_exists($this->_arquivo)) {
+    private function _loadData() {
+        if (!file_exists($this->_dataFile)) {
             $this->_data = [
                 'usuarios' => [],
                 'salas' => [],
@@ -32,51 +26,31 @@ class JsonDatabase {
                 'logs' => [],
                 'configuracoes' => []
             ];
-            $this->_salvarDados();
+            $this->_saveData();
         } else {
-            $conteudo = file_get_contents($this->_arquivo);
-            $this->_data = json_decode($conteudo, true);
+            $content = file_get_contents($this->_dataFile);
+            $this->_data = json_decode($content, true);
         }
     }
     
-    /**
-     * Salva os dados no arquivo JSON
-     */
-    private function _salvarDados() {
-        $conteudo = json_encode($this->_data, JSON_PRETTY_PRINT);
-        if (file_put_contents($this->_arquivo, $conteudo) === false) {
-            throw new Exception('Erro ao salvar dados no arquivo');
-        }
+    private function _saveData() {
+        file_put_contents($this->_dataFile, json_encode($this->_data, JSON_PRETTY_PRINT));
     }
     
-    /**
-     * Retorna todos os dados de uma coleção
-     */
-    public function getData($colecao) {
-        return $this->_data[$colecao] ?? [];
+    public function getData($collection) {
+        return $this->_data[$collection] ?? [];
     }
     
-    /**
-     * Define todos os dados de uma coleção
-     */
-    public function setData($colecao, $dados) {
-        $this->_data[$colecao] = $dados;
-        $this->_salvarDados();
-    }
-    
-    /**
-     * Busca registros em uma coleção com base em critérios
-     */
-    public function query($colecao, $criterios = []) {
-        $dados = $this->getData($colecao);
+    public function query($collection, $filters = []) {
+        $data = $this->getData($collection);
         
-        if (empty($criterios)) {
-            return $dados;
+        if (empty($filters)) {
+            return $data;
         }
         
-        return array_filter($dados, function($item) use ($criterios) {
-            foreach ($criterios as $campo => $valor) {
-                if (!isset($item[$campo]) || $item[$campo] !== $valor) {
+        return array_filter($data, function($item) use ($filters) {
+            foreach ($filters as $key => $value) {
+                if (!isset($item[$key]) || $item[$key] !== $value) {
                     return false;
                 }
             }
@@ -84,44 +58,39 @@ class JsonDatabase {
         });
     }
     
-    /**
-     * Insere um novo registro em uma coleção
-     */
-    public function insert($colecao, $dados) {
-        $dados['id'] = uniqid();
-        $dados['dataCriacao'] = date('Y-m-d H:i:s');
+    public function insert($collection, $data) {
+        if (!isset($this->_data[$collection])) {
+            $this->_data[$collection] = [];
+        }
         
-        $this->_data[$colecao][] = $dados;
-        $this->_salvarDados();
+        $data['id'] = uniqid();
+        $data['dataCriacao'] = date('Y-m-d H:i:s');
         
-        return $dados;
+        $this->_data[$collection][] = $data;
+        $this->_saveData();
+        
+        return $data;
     }
     
-    /**
-     * Atualiza um registro em uma coleção
-     */
-    public function update($colecao, $id, $dados) {
-        foreach ($this->_data[$colecao] as $indice => $item) {
+    public function update($collection, $id, $data) {
+        foreach ($this->_data[$collection] as $key => $item) {
             if ($item['id'] === $id) {
-                $dados['id'] = $id;
-                $dados['dataAtualizacao'] = date('Y-m-d H:i:s');
-                $this->_data[$colecao][$indice] = array_merge($item, $dados);
-                $this->_salvarDados();
-                return $this->_data[$colecao][$indice];
+                $data['id'] = $id;
+                $data['dataAtualizacao'] = date('Y-m-d H:i:s');
+                $this->_data[$collection][$key] = array_merge($item, $data);
+                $this->_saveData();
+                return $this->_data[$collection][$key];
             }
         }
         return null;
     }
     
-    /**
-     * Remove um registro de uma coleção
-     */
-    public function delete($colecao, $id) {
-        foreach ($this->_data[$colecao] as $indice => $item) {
+    public function delete($collection, $id) {
+        foreach ($this->_data[$collection] as $key => $item) {
             if ($item['id'] === $id) {
-                unset($this->_data[$colecao][$indice]);
-                $this->_data[$colecao] = array_values($this->_data[$colecao]);
-                $this->_salvarDados();
+                unset($this->_data[$collection][$key]);
+                $this->_data[$collection] = array_values($this->_data[$collection]);
+                $this->_saveData();
                 return true;
             }
         }
