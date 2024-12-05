@@ -25,10 +25,17 @@ class GerenciadorLogin {
                 temSenha: !!senha
             });
 
+            console.log('DEBUG - Dados de autenticação:', {
+                senhaDigitada: senha,
+                email: email,
+                timestamp: new Date().toISOString()
+            });
+
             const dadosRequisicao = {
                 email: email.trim(),
                 senha: senha,
-                timestamp: new Date().getTime()
+                timestamp: new Date().getTime(),
+                _debug: true  // Flag para indicar modo debug
             };
 
             console.log('Payload da requisição:', 
@@ -38,10 +45,10 @@ class GerenciadorLogin {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json'
+                    'Accept': 'application/json',
+                    'X-Debug-Mode': 'true'  // Header adicional para debug
                 },
                 body: JSON.stringify(dadosRequisicao),
-                // Adiciona credentials para garantir envio de cookies
                 credentials: 'include'
             });
 
@@ -52,6 +59,14 @@ class GerenciadorLogin {
 
             const dados = await resposta.json();
             console.log('Dados da resposta:', dados);
+
+            if (dados._debug) {
+                console.log('DEBUG - Comparação de senhas:', {
+                    senhaDigitada: senha,
+                    senhaArmazenada: dados._senhaArmazenada,
+                    corresponde: dados._senhasCorrespondem
+                });
+            }
 
             if (!resposta.ok || !dados.sucesso) {
                 throw new Error(
