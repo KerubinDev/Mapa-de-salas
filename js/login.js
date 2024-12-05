@@ -10,8 +10,6 @@ class GerenciadorLogin {
      * Realiza o login
      */
     async realizarLogin(email, senha) {
-        console.log('Tentando login com:', { email }); // não logue a senha
-        
         try {
             const resposta = await fetch(this.apiUrl, {
                 method: 'POST',
@@ -22,10 +20,11 @@ class GerenciadorLogin {
                 body: JSON.stringify({ email, senha })
             });
 
-            console.log('Status da resposta:', resposta.status);
-            
             const dados = await resposta.json();
-            console.log('Dados recebidos:', dados);
+            
+            if (!resposta.ok) {
+                throw new Error(dados.erro?.mensagem || 'Erro no login');
+            }
 
             if (!dados.sucesso) {
                 throw new Error(dados.erro?.mensagem || 'Erro no login');
@@ -33,8 +32,10 @@ class GerenciadorLogin {
 
             return dados.dados;
         } catch (erro) {
-            console.error('Erro detalhado:', erro);
-            throw new Error(erro.message || 'Erro no login');
+            if (erro.name === 'SyntaxError') {
+                throw new Error('Erro ao processar resposta do servidor');
+            }
+            throw erro;
         }
     }
 }
@@ -43,16 +44,22 @@ class GerenciadorLogin {
 document.addEventListener('DOMContentLoaded', () => {
     const gerenciador = new GerenciadorLogin();
     const form = document.querySelector('form');
+    const mensagemErro = document.getElementById('mensagemErro');
     
     form.addEventListener('submit', async (e) => {
         e.preventDefault();
+        
+        // Limpa mensagem de erro anterior
+        if (mensagemErro) {
+            mensagemErro.textContent = '';
+            mensagemErro.style.display = 'none';
+        }
         
         const email = form.querySelector('[name="email"]').value;
         const senha = form.querySelector('[name="senha"]').value;
         
         try {
             const resultado = await gerenciador.realizarLogin(email, senha);
-            console.log('Login bem sucedido:', resultado);
             
             // Salva o token e dados do usuário
             localStorage.setItem('token', resultado.token);
@@ -61,14 +68,17 @@ document.addEventListener('DOMContentLoaded', () => {
             // Redireciona baseado no tipo de usuário
             if (resultado.usuario.tipo === 'admin') {
                 window.location.href = '/admin';
-            } else if (resultado.usuario.tipo === 'coordenador') {
-                window.location.href = '/coordenador/';
             } else {
                 window.location.href = '/';
             }
         } catch (erro) {
             console.error('Erro no login:', erro);
-            alert(erro.message);
+            if (mensagemErro) {
+                mensagemErro.textContent = erro.message;
+                mensagemErro.style.display = 'block';
+            } else {
+                alert(erro.message);
+            }
         }
     });
 }); 

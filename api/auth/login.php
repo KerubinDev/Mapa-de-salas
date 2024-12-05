@@ -1,62 +1,62 @@
 <?php
-require_once __DIR__ . '/../../api/config.php';
-require_once __DIR__ . '/../../api/middleware.php';
+require_once __DIR__ . '/../../config.php';
 
 // Verifica se é uma requisição POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     responderErro('Método não permitido', 405);
 }
 
-try {
-    // Obtém os dados do corpo da requisição
-    $dados = json_decode(file_get_contents('php://input'), true);
-    
-    if (!isset($dados['email']) || !isset($dados['senha'])) {
-        throw new Exception('Email e senha são obrigatórios');
+// Obtém os dados do corpo da requisição
+$dados = json_decode(file_get_contents('php://input'), true);
+
+// Valida os dados recebidos
+if (!isset($dados['email']) || !isset($dados['senha'])) {
+    responderErro('Email e senha são obrigatórios', 400);
+}
+
+// Lê o banco de dados
+if (!file_exists(DB_FILE)) {
+    responderErro('Erro ao acessar banco de dados', 500);
+}
+
+$db = json_decode(file_get_contents(DB_FILE), true);
+$usuarios = $db['usuarios'] ?? [];
+
+// Busca o usuário pelo email
+$usuario = null;
+foreach ($usuarios as $u) {
+    if ($u['email'] === $dados['email']) {
+        $usuario = $u;
+        break;
     }
-    
-    // Busca o usuário pelo email
-    $db = JsonDatabase::getInstance();
-    $usuarios = $db->query('usuarios', ['email' => $dados['email']]);
-    $usuario = reset($usuarios);
-    
-    if (!$usuario || !password_verify($dados['senha'], $usuario['senha'])) {
-        throw new Exception('Email ou senha inválidos', 401);
-    }
-    
-    // Gera um novo token
-    $token = bin2hex(random_bytes(32));
-    
-    // Atualiza o token do usuário
-    $usuario = $db->update('usuarios', $usuario['id'], [
+}
+
+// Verifica se o usuário existe
+if (!$usuario) {
+    responderErro('Usuário não encontrado', 401);
+}
+
+// Verifica a senha
+if (!password_verify($dados['senha'], $usuario['senha'])) {
+    responderErro('Senha incorreta', 401);
+}
+
+// Gera um token JWT (simulado por enquanto)
+$token = base64_encode(json_encode([
+    'id' => $usuario['id'],
+    'email' => $usuario['email'],
+    'tipo' => $usuario['tipo'],
+    'exp' => time() + JWT_EXPIRATION
+]));
+
+// Remove dados sensíveis antes de retornar
+unset($usuario['senha']);
+
+// Retorna os dados do usuário e o token
+responderJson([
+    'sucesso' => true,
+    'dados' => [
         'token' => $token,
-        'ultimoLogin' => date('Y-m-d H:i:s')
-    ]);
-    
-    // Remove dados sensíveis
-    unset($usuario['senha']);
-    unset($usuario['tokenRecuperacao']);
-    unset($usuario['tokenExpiracao']);
-    
-    // Registra o login no log
-    registrarLog($usuario['id'], 'login', 'Login realizado com sucesso');
-    
-    // Define permissões do usuário
-    $usuario['permissoes'] = [
-        'gerenciarUsuarios' => $usuario['tipo'] === 'admin',
-        'gerenciarSalas' => in_array($usuario['tipo'], ['admin', 'coordenador']),
-        'gerenciarTurmas' => in_array($usuario['tipo'], ['admin', 'coordenador']),
-        'fazerReservas' => in_array($usuario['tipo'], ['admin', 'coordenador', 'professor']),
-        'verLogs' => $usuario['tipo'] === 'admin',
-        'fazerBackup' => $usuario['tipo'] === 'admin'
-    ];
-    
-    // Retorna os dados do usuário
-    responderJson([
-        'usuario' => $usuario,
-        'token' => $usuario['token']
-    ]);
-    
-} catch (Exception $e) {
-    responderErro($e->getMessage(), $e->getCode() ?: 400);
-} 
+        'usuario' => $usuario
+    ]
+]); 
