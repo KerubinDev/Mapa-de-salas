@@ -4,6 +4,12 @@
 class GerenciadorLogin {
     constructor() {
         this.apiUrl = '/api/auth/login';
+        // Constantes para mensagens de erro
+        this.MENSAGENS = {
+            SENHA_INCORRETA: 'Senha incorreta',
+            ERRO_SERVIDOR: 'Erro ao conectar com o servidor',
+            USUARIO_NAO_ENCONTRADO: 'Usuário não encontrado'
+        };
     }
     
     /**
@@ -19,73 +25,51 @@ class GerenciadorLogin {
                 throw new Error('Email e senha são obrigatórios');
             }
 
-            console.log('Iniciando tentativa de login:', {
-                email,
-                urlApi: this.apiUrl,
-                temSenha: !!senha
-            });
-
-            console.log('DEBUG - Dados de autenticação:', {
+            // Gera o hash da senha localmente para comparação
+            const hashLocal = await this._gerarHash(senha);
+            console.log('DEBUG - Comparação de hashes:', {
+                hashGerado: hashLocal,
+                hashEsperado: '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9',
                 senhaDigitada: senha,
-                email: email,
-                timestamp: new Date().toISOString()
+                email: email
             });
 
             const dadosRequisicao = {
                 email: email.trim(),
                 senha: senha,
-                timestamp: new Date().getTime(),
-                _debug: true,
-                _debugInfo: {
-                    senhaDigitada: senha,
-                    emailDigitado: email,
-                    hashLocal: await this._gerarHash(senha)
-                }
+                hashSenha: hashLocal,  // Envia o hash também para debug
+                timestamp: new Date().getTime()
             };
-
-            console.log('Payload da requisição:', 
-                JSON.stringify(dadosRequisicao, null, 2));
 
             const resposta = await fetch(this.apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                    'X-Debug-Mode': 'true',
-                    'X-Auth-Debug': 'true'
+                    'Accept': 'application/json'
                 },
                 body: JSON.stringify(dadosRequisicao),
                 credentials: 'include'
             });
 
-            console.log('Resposta do servidor:', {
+            const dados = await resposta.json();
+
+            // Log detalhado da resposta
+            console.log('DEBUG - Resposta completa:', {
                 status: resposta.status,
+                dados: dados,
                 headers: Object.fromEntries(resposta.headers.entries())
             });
 
-            const dados = await resposta.json();
-            console.log('Dados da resposta:', dados);
-
-            if (dados._debug) {
-                console.log('DEBUG - Detalhes da autenticação:', {
-                    senhaDigitada: senha,
-                    senhaArmazenada: dados._senhaArmazenada,
-                    hashLocal: dados._hashLocal,
-                    hashServidor: dados._hashServidor,
-                    algoritmoHash: dados._algoritmoHash,
-                    corresponde: dados._senhasCorrespondem,
-                    tempoProcessamento: dados._tempoProcessamento
-                });
+            if (!resposta.ok) {
+                throw new Error(dados.erro?.mensagem || this.MENSAGENS.ERRO_SERVIDOR);
             }
 
-            if (!resposta.ok || !dados.sucesso) {
-                throw new Error(
-                    dados.erro?.mensagem || 
-                    `Falha na autenticação (${resposta.status})`
-                );
+            if (!dados.sucesso) {
+                throw new Error(dados.erro?.mensagem || this.MENSAGENS.SENHA_INCORRETA);
             }
 
             return dados.dados;
+
         } catch (erro) {
             console.error('Erro detalhado:', {
                 mensagem: erro.message,
@@ -122,6 +106,7 @@ class GerenciadorLogin {
 
     // Função auxiliar para gerar hash (apenas para debug)
     async _gerarHash(senha) {
+        // Função para gerar hash SHA-256 da senha
         const encoder = new TextEncoder();
         const data = encoder.encode(senha);
         const hashBuffer = await crypto.subtle.digest('SHA-256', data);
