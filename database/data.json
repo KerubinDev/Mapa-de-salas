@@ -3,7 +3,7 @@
         {
             "nome": "Administrador",
             "email": "admin@sistema.com",
-            "senha": "$2y$10$YYKcURLLTlYGMuKVTkqVT.C5.6H3y9IOqvQnXUh0RMZXJmkXT2E6i",
+            "senha": "$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi",
             "tipo": "admin",
             "dataCriacao": "2024-12-05 19:59:06",
             "status": "ativo",
