@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Redireciona baseado no tipo de usuário
             if (resultado.usuario.tipo === 'admin') {
-                window.location.href = '/admin/';
+                window.location.href = '/admin';
             } else if (resultado.usuario.tipo === 'coordenador') {
                 window.location.href = '/coordenador/';
             } else {

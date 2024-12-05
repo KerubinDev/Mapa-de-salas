@@ -98,6 +98,8 @@ $rotas = [
     'POST:/auth/logout' => DIRETORIO_API . '/auth/logout.php',
     'GET:/auth/perfil' => DIRETORIO_API . '/auth/perfil.php',
     'PUT:/auth/perfil' => DIRETORIO_API . '/auth/perfil.php',
+    
+    // Rotas de páginas administrativas
     'GET:/admin' => DIRETORIO_BASE . '/admin/adminpanel.html',
     'GET:/admin/salas' => DIRETORIO_BASE . '/admin/salas.html',
     'GET:/admin/reservas' => DIRETORIO_BASE . '/admin/reservas.html',
