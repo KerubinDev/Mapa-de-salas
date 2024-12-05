@@ -14,31 +14,42 @@ class GerenciadorLogin {
      */
     async realizarLogin(email, senha) {
         try {
+            console.log('Tentando login com email:', email);
+            
             const resposta = await fetch(this.apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({ email, senha })
+                body: JSON.stringify({ 
+                    email, 
+                    senha,
+                    timestamp: new Date().getTime()
+                })
             });
 
+            console.log('Status da resposta:', resposta.status);
             const dados = await resposta.json();
-            
-            if (!resposta.ok) {
-                throw new Error(dados.erro?.mensagem || 'Erro no login');
-            }
+            console.log('Dados da resposta:', {
+                sucesso: dados.sucesso,
+                erro: dados.erro
+            });
 
-            if (!dados.sucesso) {
-                throw new Error(dados.erro?.mensagem || 'Erro no login');
+            if (!resposta.ok) {
+                throw new Error(
+                    dados.erro?.mensagem || 
+                    `Erro no servidor: ${resposta.status}`
+                );
             }
 
             return dados.dados;
         } catch (erro) {
-            console.error('Erro no login:', erro);
-            if (erro.name === 'SyntaxError') {
-                throw new Error('Erro ao processar resposta do servidor');
-            }
+            console.error('Detalhes do erro:', {
+                mensagem: erro.message,
+                tipo: erro.name,
+                stack: erro.stack
+            });
             throw erro;
         }
     }
