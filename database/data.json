@@ -1,8 +1,121 @@
 {
-    "usuarios": [],
+    "usuarios": [
+        {
+            "nome": "Administrador",
+            "email": "admin@sistema.com",
+            "senha": "$2y$10$BhlITXwOgx0pn5LRh2ZuR.PZxGrioHgKtaWTKMrWMp8RR159o3qhO",
+            "tipo": "admin",
+            "dataCriacao": "2024-12-05 19:59:06",
+            "status": "ativo",
+            "id": "6752060abeb23",
+            "token": "983db8c17bca77548e2ced3a10ead7a9d3d8dcfa3581ee968870ae9ebc5553de",
+            "ultimoLogin": "2024-12-05 19:59:20",
+            "dataAtualizacao": "2024-12-05 19:59:20"
+        }
+    ],
     "salas": [],
     "turmas": [],
     "reservas": [],
-    "logs": [],
+    "logs": [
+        {
+            "usuarioId": "6752060abeb23",
+            "acao": "login",
+            "detalhes": "Login realizado com sucesso",
+            "ip": "127.0.0.1",
+            "userAgent": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/128.0.0.0 Safari\/537.36 OPR\/114.0.0.0 (Edition std-1)",
+            "id": "67520658337f1",
+            "dataCriacao": "2024-12-05 17:00:24"
+        },
+        {
+            "usuarioId": "6752060abeb23",
+            "acao": "login",
+            "detalhes": "Login realizado com sucesso",
+            "ip": "127.0.0.1",
+            "userAgent": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/128.0.0.0 Safari\/537.36 OPR\/114.0.0.0 (Edition std-1)",
+            "id": "67520662b3f23",
+            "dataCriacao": "2024-12-05 17:00:34"
+        },
+        {
+            "usuarioId": "6752060abeb23",
+            "acao": "login",
+            "detalhes": "Login realizado com sucesso",
+            "ip": "127.0.0.1",
+            "userAgent": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/128.0.0.0 Safari\/537.36 OPR\/114.0.0.0 (Edition std-1)",
+            "id": "675206de031c2",
+            "dataCriacao": "2024-12-05 17:02:38"
+        },
+        {
+            "usuarioId": "6752060abeb23",
+            "acao": "login",
+            "detalhes": "Login realizado com sucesso",
+            "ip": "127.0.0.1",
+            "userAgent": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/128.0.0.0 Safari\/537.36 OPR\/114.0.0.0 (Edition std-1)",
+            "id": "675208cb49e3a",
+            "dataCriacao": "2024-12-05 17:10:51"
+        },
+        {
+            "usuarioId": "6752060abeb23",
+            "acao": "login",
+            "detalhes": "Login realizado com sucesso",
+            "ip": "127.0.0.1",
+            "userAgent": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/128.0.0.0 Safari\/537.36 OPR\/114.0.0.0 (Edition std-1)",
+            "id": "675208d3b7851",
+            "dataCriacao": "2024-12-05 17:10:59"
+        },
+        {
+            "usuarioId": "6752060abeb23",
+            "acao": "login",
+            "detalhes": "Login realizado com sucesso",
+            "ip": "127.0.0.1",
+            "userAgent": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/128.0.0.0 Safari\/537.36 OPR\/114.0.0.0 (Edition std-1)",
+            "id": "6752094252dc3",
+            "dataCriacao": "2024-12-05 17:12:50"
+        },
+        {
+            "usuarioId": "6752060abeb23",
+            "acao": "login",
+            "detalhes": "Login realizado com sucesso",
+            "ip": "127.0.0.1",
+            "userAgent": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/128.0.0.0 Safari\/537.36 OPR\/114.0.0.0 (Edition std-1)",
+            "id": "675209f0b6f57",
+            "dataCriacao": "2024-12-05 17:15:44"
+        },
+        {
+            "usuarioId": "6752060abeb23",
+            "acao": "login",
+            "detalhes": "Login realizado com sucesso",
+            "ip": "127.0.0.1",
+            "userAgent": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/128.0.0.0 Safari\/537.36 OPR\/114.0.0.0 (Edition std-1)",
+            "id": "67520a73683b7",
+            "dataCriacao": "2024-12-05 17:17:55"
+        },
+        {
+            "usuarioId": "6752060abeb23",
+            "acao": "login",
+            "detalhes": "Login realizado com sucesso",
+            "ip": "::1",
+            "userAgent": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/128.0.0.0 Safari\/537.36 OPR\/114.0.0.0",
+            "id": "67522e3878825",
+            "dataCriacao": "2024-12-05 19:50:32"
+        },
+        {
+            "usuarioId": "6752060abeb23",
+            "acao": "login",
+            "detalhes": "Login realizado com sucesso",
+            "ip": "::1",
+            "userAgent": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/128.0.0.0 Safari\/537.36 OPR\/114.0.0.0",
+            "id": "67523042969e4",
+            "dataCriacao": "2024-12-05 19:59:14"
+        },
+        {
+            "usuarioId": "6752060abeb23",
+            "acao": "login",
+            "detalhes": "Login realizado com sucesso",
+            "ip": "::1",
+            "userAgent": "Mozilla\/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit\/537.36 (KHTML, like Gecko) Chrome\/128.0.0.0 Safari\/537.36 OPR\/114.0.0.0",
+            "id": "6752304836972",
+            "dataCriacao": "2024-12-05 19:59:20"
+        }
+    ],
     "configuracoes": []
-} 
+}

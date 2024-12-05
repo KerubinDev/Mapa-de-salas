@@ -4,7 +4,7 @@
  */
 
 // Configurações do banco de dados
-define('DB_FILE', __DIR__ . '/api/database.json');
+define('DB_FILE', __DIR__ . '/database/data.json');
 
 // Configurações de autenticação
 define('JWT_SECRET', 'sua_chave_secreta_aqui');
