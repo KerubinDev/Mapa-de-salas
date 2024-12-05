@@ -7,6 +7,9 @@ if (APP_DEBUG) {
     error_reporting(E_ALL);
 }
 
+// Log para debug
+error_log("Requisição recebida: " . $_SERVER['REQUEST_METHOD'] . " " . $_SERVER['REQUEST_URI']);
+
 // Mapeia extensões para tipos MIME
 $mimeTypes = [
     'js' => 'application/javascript',
@@ -23,6 +26,9 @@ $mimeTypes = [
 $metodo = $_SERVER['REQUEST_METHOD'];
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 $uri = '/' . trim($uri, '/');
+
+// Log para debug
+error_log("Método: $metodo, URI: $uri");
 
 // Define as rotas da API
 $rotas = [
@@ -63,16 +69,35 @@ if ($ext && file_exists(__DIR__ . $uri)) {
 
 // Verifica se é uma rota da API
 $rotaChave = "{$metodo}:{$uri}";
+error_log("Procurando rota: $rotaChave");
+
 if (isset($rotas[$rotaChave])) {
     $arquivo = __DIR__ . '/' . $rotas[$rotaChave];
+    error_log("Arquivo a ser carregado: $arquivo");
+    
     if (file_exists($arquivo)) {
+        error_log("Arquivo encontrado, carregando...");
         require $arquivo;
         exit;
+    } else {
+        error_log("Arquivo não encontrado!");
     }
 }
 
 // Se chegou aqui, retorna 404
+error_log("Nenhuma rota encontrada para: $rotaChave");
 http_response_code(404);
 header('Content-Type: application/json');
-echo json_encode(['erro' => 'Rota não encontrada']);
+echo json_encode([
+    'sucesso' => false,
+    'erro' => [
+        'codigo' => 404,
+        'mensagem' => 'Rota não encontrada',
+        'detalhes' => [
+            'metodo' => $metodo,
+            'uri' => $uri,
+            'rotaChave' => $rotaChave
+        ]
+    ]
+]);
  
