@@ -1,44 +1,96 @@
 <?php
-/**
- * Configurações globais do sistema
- */
+require_once __DIR__ . '/../database/JsonDatabase.php';
 
-// Configurações de CORS
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    header('Access-Control-Allow-Origin: *');
-    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type, Authorization');
-    header('Content-Type: application/json');
-    exit(0);
+// Configurações gerais
+define('APP_NAME', 'Sistema de Reservas');
+define('APP_VERSION', '1.0.0');
+define('APP_TIMEZONE', 'America/Sao_Paulo');
+
+// Configurações de ambiente
+define('APP_ENV', getenv('APP_ENV') ?: 'development');
+define('APP_DEBUG', APP_ENV === 'development');
+
+// Configurações de data/hora
+date_default_timezone_set(APP_TIMEZONE);
+
+// Configurações de erro
+if (APP_DEBUG) {
+    error_reporting(E_ALL);
+    ini_set('display_errors', 1);
+} else {
+    error_reporting(0);
+    ini_set('display_errors', 0);
 }
 
-// Configurações padrão para outras requisições
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
-header('Content-Type: application/json');
+// Configurações de sessão
+session_start();
 
-// Constantes do sistema
-define('HORARIOS_VALIDOS', [
-    '07:30 - 08:20', '08:20 - 09:10', '09:10 - 10:00',
-    '10:20 - 11:10', '11:10 - 12:00',
-    '13:30 - 14:20', '14:20 - 15:10', '15:10 - 16:00',
-    '16:20 - 17:10', '17:10 - 18:00',
-    '19:00 - 19:50', '19:50 - 20:40', '20:40 - 21:30',
-    '21:40 - 22:30'
-]);
+// Configurações de cabeçalhos
+header('Content-Type: application/json; charset=UTF-8');
+
+// Instância global do banco de dados
+$db = JsonDatabase::getInstance();
 
 /**
- * Funções auxiliares
+ * Responde com JSON
  */
 function responderJson($dados, $codigo = 200) {
     http_response_code($codigo);
-    echo json_encode($dados);
+    echo json_encode([
+        'sucesso' => true,
+        'dados' => $dados
+    ], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
+/**
+ * Responde com erro
+ */
 function responderErro($mensagem, $codigo = 400) {
     http_response_code($codigo);
-    echo json_encode(['erro' => $mensagem]);
+    echo json_encode([
+        'sucesso' => false,
+        'erro' => [
+            'codigo' => $codigo,
+            'mensagem' => $mensagem
+        ]
+    ], JSON_UNESCAPED_UNICODE);
     exit;
-} 
+}
+
+/**
+ * Função de log para debug
+ */
+function debug($dados) {
+    if (APP_DEBUG) {
+        error_log(print_r($dados, true));
+    }
+}
+
+/**
+ * Função para validar data
+ */
+function validarData($data) {
+    $d = DateTime::createFromFormat('Y-m-d', $data);
+    return $d && $d->format('Y-m-d') === $data;
+}
+
+/**
+ * Função para validar horário
+ */
+function validarHorario($horario) {
+    if (!preg_match('/^([01][0-9]|2[0-3]):[0-5][0-9]$/', $horario)) {
+        return false;
+    }
+    
+    list($hora, $minuto) = explode(':', $horario);
+    return ($minuto % 15) === 0;
+}
+
+/**
+ * Função para formatar data/hora
+ */
+function formatarDataHora($data, $formato = 'd/m/Y H:i') {
+    return date($formato, strtotime($data));
+}
+ 

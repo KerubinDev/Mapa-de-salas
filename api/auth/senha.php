@@ -1,10 +1,8 @@
 <?php
 require_once '../config.php';
 require_once '../middleware.php';
-require_once __DIR__ . '/../../database/Database.php';
 
 try {
-    $db = Database::getInstance()->getConnection();
     $metodo = $_SERVER['REQUEST_METHOD'];
     
     switch ($metodo) {
@@ -16,9 +14,8 @@ try {
             }
             
             // Verifica se o usuário existe
-            $stmt = $db->prepare('SELECT id, nome FROM usuarios WHERE email = ?');
-            $stmt->execute([$dados['email']]);
-            $usuario = $stmt->fetch();
+            $usuarios = $db->query('usuarios', ['email' => $dados['email']]);
+            $usuario = reset($usuarios);
             
             if (!$usuario) {
                 throw new Exception('Email não encontrado');
@@ -28,15 +25,11 @@ try {
             $token = bin2hex(random_bytes(32));
             $expira = date('Y-m-d H:i:s', strtotime('+1 hour'));
             
-            // Salva o token
-            $stmt = $db->prepare('
-                UPDATE usuarios 
-                SET token_recuperacao = ?, 
-                    token_expiracao = ?,
-                    data_atualizacao = CURRENT_TIMESTAMP 
-                WHERE id = ?
-            ');
-            $stmt->execute([$token, $expira, $usuario['id']]);
+            // Atualiza o token de recuperação do usuário
+            $db->update('usuarios', $usuario['id'], [
+                'tokenRecuperacao' => $token,
+                'tokenExpiracao' => $expira
+            ]);
             
             // TODO: Enviar email com o link de recuperação
             // Por enquanto, apenas retorna o token para testes
@@ -57,60 +50,36 @@ try {
                 throw new Exception('A senha deve ter no mínimo 6 caracteres');
             }
             
-            // Verifica o token
-            $stmt = $db->prepare('
-                SELECT id 
-                FROM usuarios 
-                WHERE token_recuperacao = ? 
-                AND token_expiracao > CURRENT_TIMESTAMP
-            ');
-            $stmt->execute([$dados['token']]);
-            $usuario = $stmt->fetch();
+            // Busca o usuário pelo token
+            $usuarios = $db->query('usuarios', ['tokenRecuperacao' => $dados['token']]);
+            $usuario = reset($usuarios);
             
             if (!$usuario) {
-                throw new Exception('Token inválido ou expirado');
+                throw new Exception('Token inválido');
             }
             
-            try {
-                $db->beginTransaction();
-                
-                // Atualiza a senha
-                $stmt = $db->prepare('
-                    UPDATE usuarios 
-                    SET senha = ?,
-                        token_recuperacao = NULL,
-                        token_expiracao = NULL,
-                        data_atualizacao = CURRENT_TIMESTAMP 
-                    WHERE id = ?
-                ');
-                
-                $stmt->execute([
-                    password_hash($dados['senha'], PASSWORD_DEFAULT),
-                    $usuario['id']
-                ]);
-                
-                // Registra no log
-                $stmt = $db->prepare('
-                    INSERT INTO logs (id, usuario_id, acao, detalhes, ip, user_agent)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                ');
-                
-                $stmt->execute([
-                    uniqid(),
-                    $usuario['id'],
-                    'senha',
-                    'Senha alterada via recuperação',
-                    $_SERVER['REMOTE_ADDR'] ?? '',
-                    $_SERVER['HTTP_USER_AGENT'] ?? ''
-                ]);
-                
-                $db->commit();
-                responderJson(['mensagem' => 'Senha alterada com sucesso']);
-                
-            } catch (Exception $e) {
-                $db->rollBack();
-                throw $e;
+            // Verifica se o token ainda é válido
+            if (strtotime($usuario['tokenExpiracao']) < time()) {
+                throw new Exception('Token expirado');
             }
+            
+            // Atualiza a senha e limpa o token
+            $db->update('usuarios', $usuario['id'], [
+                'senha' => password_hash($dados['senha'], PASSWORD_DEFAULT),
+                'tokenRecuperacao' => null,
+                'tokenExpiracao' => null
+            ]);
+            
+            // Registra a alteração no log
+            $db->insert('logs', [
+                'usuarioId' => $usuario['id'],
+                'acao' => 'senha',
+                'detalhes' => 'Senha alterada via recuperação',
+                'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
+                'userAgent' => $_SERVER['HTTP_USER_AGENT'] ?? ''
+            ]);
+            
+            responderJson(['mensagem' => 'Senha alterada com sucesso']);
             break;
             
         default:

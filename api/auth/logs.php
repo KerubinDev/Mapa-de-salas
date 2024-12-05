@@ -1,7 +1,6 @@
 <?php
 require_once '../config.php';
 require_once '../middleware.php';
-require_once __DIR__ . '/../../database/Database.php';
 
 // Verifica autenticação
 try {
@@ -13,77 +12,164 @@ try {
     responderErro($e->getMessage(), $e->getCode());
 }
 
-try {
-    $db = Database::getInstance()->getConnection();
+class GerenciadorLogs {
+    private $_db;
     
-    // Monta a query base
-    $sql = '
-        SELECT l.*, u.nome as usuario_nome, u.email as usuario_email
-        FROM logs l
-        LEFT JOIN usuarios u ON l.usuario_id = u.id
-        WHERE 1=1
-    ';
-    $params = [];
-    
-    // Aplica filtros
-    if (!empty($_GET['dataInicio'])) {
-        $sql .= ' AND l.data_criacao >= ?';
-        $params[] = $_GET['dataInicio'];
+    public function __construct() {
+        $this->_db = JsonDatabase::getInstance();
     }
     
-    if (!empty($_GET['dataFim'])) {
-        $sql .= ' AND l.data_criacao <= ?';
-        $params[] = $_GET['dataFim'];
-    }
-    
-    if (!empty($_GET['usuarioId'])) {
-        $sql .= ' AND l.usuario_id = ?';
-        $params[] = $_GET['usuarioId'];
-    }
-    
-    if (!empty($_GET['acao'])) {
-        $sql .= ' AND l.acao = ?';
-        $params[] = $_GET['acao'];
-    }
-    
-    // Ordena por data decrescente
-    $sql .= ' ORDER BY l.data_criacao DESC';
-    
-    // Aplica paginação se solicitado
-    if (isset($_GET['limite'])) {
-        $limite = (int)$_GET['limite'];
-        $pagina = isset($_GET['pagina']) ? (int)$_GET['pagina'] : 1;
-        $offset = ($pagina - 1) * $limite;
-        
-        $sql .= ' LIMIT ? OFFSET ?';
-        $params[] = $limite;
-        $params[] = $offset;
-    }
-    
-    // Executa a query
-    $stmt = $db->prepare($sql);
-    $stmt->execute($params);
-    $logs = $stmt->fetchAll();
-    
-    // Formata os dados para retorno
-    $logs = array_map(function($log) {
-        return [
-            'id' => $log['id'],
-            'usuario' => [
-                'id' => $log['usuario_id'],
-                'nome' => $log['usuario_nome'],
-                'email' => $log['usuario_email']
-            ],
-            'acao' => $log['acao'],
-            'detalhes' => $log['detalhes'],
-            'ip' => $log['ip'],
-            'userAgent' => $log['user_agent'],
-            'data' => $log['data_criacao']
+    /**
+     * Lista os logs do sistema
+     */
+    public function listar() {
+        // Obtém parâmetros de filtro
+        $filtros = [
+            'usuarioId' => $_GET['usuario'] ?? null,
+            'acao' => $_GET['acao'] ?? null,
+            'dataInicio' => $_GET['inicio'] ?? null,
+            'dataFim' => $_GET['fim'] ?? null
         ];
-    }, $logs);
+        
+        // Remove filtros vazios
+        $filtros = array_filter($filtros);
+        
+        // Busca todos os logs
+        $logs = $this->_db->getData('logs');
+        
+        // Aplica filtros
+        if (!empty($filtros)) {
+            $logs = array_filter($logs, function($log) use ($filtros) {
+                if (!empty($filtros['usuarioId']) && $log['usuarioId'] !== $filtros['usuarioId']) {
+                    return false;
+                }
+                
+                if (!empty($filtros['acao']) && $log['acao'] !== $filtros['acao']) {
+                    return false;
+                }
+                
+                if (!empty($filtros['dataInicio']) && 
+                    strtotime($log['dataCriacao']) < strtotime($filtros['dataInicio'])) {
+                    return false;
+                }
+                
+                if (!empty($filtros['dataFim']) && 
+                    strtotime($log['dataCriacao']) > strtotime($filtros['dataFim'])) {
+                    return false;
+                }
+                
+                return true;
+            });
+        }
+        
+        // Adiciona informações do usuário
+        $usuarios = $this->_db->getData('usuarios');
+        $usuariosIndex = array_column($usuarios, null, 'id');
+        
+        foreach ($logs as &$log) {
+            if (isset($usuariosIndex[$log['usuarioId']])) {
+                $usuario = $usuariosIndex[$log['usuarioId']];
+                $log['usuario'] = [
+                    'id' => $usuario['id'],
+                    'nome' => $usuario['nome'],
+                    'email' => $usuario['email'],
+                    'tipo' => $usuario['tipo']
+                ];
+            }
+        }
+        
+        // Ordena por data decrescente
+        usort($logs, function($a, $b) {
+            return strtotime($b['dataCriacao']) - strtotime($a['dataCriacao']);
+        });
+        
+        // Paginação
+        $pagina = max(1, intval($_GET['pagina'] ?? 1));
+        $porPagina = max(10, min(100, intval($_GET['limite'] ?? 50)));
+        
+        $total = count($logs);
+        $logs = array_slice($logs, ($pagina - 1) * $porPagina, $porPagina);
+        
+        responderJson([
+            'logs' => $logs,
+            'paginacao' => [
+                'total' => $total,
+                'pagina' => $pagina,
+                'porPagina' => $porPagina,
+                'totalPaginas' => ceil($total / $porPagina)
+            ]
+        ]);
+    }
     
-    responderJson($logs);
-    
+    /**
+     * Retorna estatísticas dos logs
+     */
+    public function estatisticas() {
+        $logs = $this->_db->getData('logs');
+        
+        // Contagem por ação
+        $acoes = [];
+        foreach ($logs as $log) {
+            $acao = $log['acao'];
+            if (!isset($acoes[$acao])) {
+                $acoes[$acao] = 0;
+            }
+            $acoes[$acao]++;
+        }
+        
+        // Contagem por usuário
+        $usuarios = [];
+        foreach ($logs as $log) {
+            $usuarioId = $log['usuarioId'];
+            if (!isset($usuarios[$usuarioId])) {
+                $usuarios[$usuarioId] = 0;
+            }
+            $usuarios[$usuarioId]++;
+        }
+        
+        // Busca nomes dos usuários
+        $todosUsuarios = $this->_db->getData('usuarios');
+        $usuariosIndex = array_column($todosUsuarios, null, 'id');
+        
+        $usuariosStats = [];
+        foreach ($usuarios as $id => $total) {
+            if (isset($usuariosIndex[$id])) {
+                $usuariosStats[] = [
+                    'usuario' => [
+                        'id' => $id,
+                        'nome' => $usuariosIndex[$id]['nome'],
+                        'email' => $usuariosIndex[$id]['email']
+                    ],
+                    'total' => $total
+                ];
+            }
+        }
+        
+        // Ordena usuários por total decrescente
+        usort($usuariosStats, function($a, $b) {
+            return $b['total'] - $a['total'];
+        });
+        
+        responderJson([
+            'total' => count($logs),
+            'acoes' => $acoes,
+            'usuarios' => array_slice($usuariosStats, 0, 10), // Top 10 usuários
+            'ultimaAtualizacao' => date('Y-m-d H:i:s')
+        ]);
+    }
+}
+
+// Roteamento
+$gerenciador = new GerenciadorLogs();
+$metodo = $_SERVER['REQUEST_METHOD'];
+$rota = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+
+try {
+    if (strpos($rota, '/estatisticas') !== false) {
+        $gerenciador->estatisticas();
+    } else {
+        $gerenciador->listar();
+    }
 } catch (Exception $e) {
     responderErro($e->getMessage(), $e->getCode() ?: 400);
 } 

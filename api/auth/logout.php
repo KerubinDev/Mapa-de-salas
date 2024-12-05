@@ -1,7 +1,6 @@
 <?php
 require_once '../config.php';
-require_once 'AuthManager.php';
-require_once __DIR__ . '/../../database/Database.php';
+require_once '../middleware.php';
 
 // Verifica se é uma requisição POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -16,9 +15,25 @@ try {
     if (preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
         $token = $matches[1];
         
-        // Realiza o logout
-        $auth = AuthManager::getInstance();
-        $auth->logout($token);
+        // Busca o usuário pelo token
+        $usuarios = $db->query('usuarios', ['token' => $token]);
+        $usuario = reset($usuarios);
+        
+        if ($usuario) {
+            // Remove o token do usuário
+            $db->update('usuarios', $usuario['id'], [
+                'token' => null
+            ]);
+            
+            // Registra o logout no log
+            $db->insert('logs', [
+                'usuarioId' => $usuario['id'],
+                'acao' => 'logout',
+                'detalhes' => 'Logout realizado com sucesso',
+                'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
+                'userAgent' => $_SERVER['HTTP_USER_AGENT'] ?? ''
+            ]);
+        }
     }
     
     responderJson(['mensagem' => 'Logout realizado com sucesso']);

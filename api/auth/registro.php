@@ -1,11 +1,8 @@
 <?php
 require_once '../config.php';
 require_once '../middleware.php';
-require_once __DIR__ . '/../../database/Database.php';
 
 try {
-    $db = Database::getInstance()->getConnection();
-    
     // Obtém os dados do corpo da requisição
     $dados = json_decode(file_get_contents('php://input'), true);
     
@@ -31,73 +28,36 @@ try {
     }
     
     // Verifica se o email já está em uso
-    $stmt = $db->prepare('SELECT id FROM usuarios WHERE email = ?');
-    $stmt->execute([$dados['email']]);
-    if ($stmt->fetch()) {
+    $usuarioExistente = $db->query('usuarios', ['email' => $dados['email']]);
+    if (!empty($usuarioExistente)) {
         throw new Exception('Email já cadastrado');
     }
     
-    try {
-        $db->beginTransaction();
-        
-        // Insere o usuário
-        $stmt = $db->prepare('
-            INSERT INTO usuarios (id, nome, email, senha, tipo)
-            VALUES (?, ?, ?, ?, ?)
-        ');
-        
-        $id = uniqid();
-        $stmt->execute([
-            $id,
-            $dados['nome'],
-            $dados['email'],
-            password_hash($dados['senha'], PASSWORD_DEFAULT),
-            'usuario' // Tipo padrão para novos registros
-        ]);
-        
-        // Registra o registro no log
-        $stmt = $db->prepare('
-            INSERT INTO logs (id, usuario_id, acao, detalhes, ip, user_agent)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ');
-        
-        $stmt->execute([
-            uniqid(),
-            $id,
-            'registro',
-            'Novo usuário registrado',
-            $_SERVER['REMOTE_ADDR'] ?? '',
-            $_SERVER['HTTP_USER_AGENT'] ?? ''
-        ]);
-        
-        // Busca o usuário criado
-        $stmt = $db->prepare('
-            SELECT id, nome, email, tipo, data_criacao
-            FROM usuarios WHERE id = ?
-        ');
-        $stmt->execute([$id]);
-        $usuario = $stmt->fetch();
-        
-        // Gera um token de acesso
-        $token = bin2hex(random_bytes(32));
-        
-        // Atualiza o token do usuário
-        $stmt = $db->prepare('
-            UPDATE usuarios 
-            SET token = ?, data_atualizacao = CURRENT_TIMESTAMP 
-            WHERE id = ?
-        ');
-        $stmt->execute([$token, $id]);
-        
-        $usuario['token'] = $token;
-        
-        $db->commit();
-        responderJson($usuario, 201);
-        
-    } catch (Exception $e) {
-        $db->rollBack();
-        throw $e;
-    }
+    // Gera um token de acesso
+    $token = bin2hex(random_bytes(32));
+    
+    // Cria o usuário
+    $usuario = $db->insert('usuarios', [
+        'nome' => $dados['nome'],
+        'email' => $dados['email'],
+        'senha' => password_hash($dados['senha'], PASSWORD_DEFAULT),
+        'tipo' => 'usuario',
+        'token' => $token
+    ]);
+    
+    // Remove dados sensíveis antes de retornar
+    unset($usuario['senha']);
+    
+    // Registra o registro no log
+    $db->insert('logs', [
+        'usuarioId' => $usuario['id'],
+        'acao' => 'registro',
+        'detalhes' => 'Novo usuário registrado',
+        'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
+        'userAgent' => $_SERVER['HTTP_USER_AGENT'] ?? ''
+    ]);
+    
+    responderJson($usuario, 201);
     
 } catch (Exception $e) {
     responderErro($e->getMessage(), $e->getCode() ?: 400);

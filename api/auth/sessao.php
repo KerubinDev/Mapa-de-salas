@@ -1,99 +1,45 @@
 <?php
 require_once '../config.php';
 require_once '../middleware.php';
-require_once __DIR__ . '/../../database/Database.php';
 
 try {
-    $db = Database::getInstance()->getConnection();
     $metodo = $_SERVER['REQUEST_METHOD'];
     
     switch ($metodo) {
         case 'GET': // Lista sessões ativas do usuário
             $usuario = verificarAutenticacao();
             
-            $stmt = $db->prepare('
-                SELECT id, ip, user_agent, data_criacao, data_expiracao
-                FROM sessoes
-                WHERE usuario_id = ? AND data_expiracao > CURRENT_TIMESTAMP
-                ORDER BY data_criacao DESC
-            ');
-            $stmt->execute([$usuario['id']]);
-            $sessoes = $stmt->fetchAll();
+            // Busca todas as sessões do usuário
+            $logs = array_filter($db->getData('logs'), function($log) use ($usuario) {
+                return $log['usuarioId'] === $usuario['id'] && 
+                       $log['acao'] === 'login' &&
+                       strtotime($log['dataCriacao']) > strtotime('-30 days');
+            });
             
-            // Adiciona informações do dispositivo
-            foreach ($sessoes as &$sessao) {
-                $sessao['dispositivo'] = [
-                    'browser' => getBrowser($sessao['user_agent']),
-                    'sistema' => getOS($sessao['user_agent']),
-                    'atual' => $sessao['id'] === session_id()
-                ];
+            // Agrupa por IP e User Agent
+            $sessoes = [];
+            foreach ($logs as $log) {
+                $chave = $log['ip'] . '|' . $log['userAgent'];
+                if (!isset($sessoes[$chave])) {
+                    $sessoes[$chave] = [
+                        'id' => uniqid(),
+                        'ip' => $log['ip'],
+                        'userAgent' => $log['userAgent'],
+                        'dataCriacao' => $log['dataCriacao'],
+                        'dispositivo' => [
+                            'browser' => getBrowser($log['userAgent']),
+                            'sistema' => getOS($log['userAgent']),
+                            'atual' => ($log['ip'] === $_SERVER['REMOTE_ADDR'] && 
+                                      $log['userAgent'] === $_SERVER['HTTP_USER_AGENT'])
+                        ]
+                    ];
+                }
             }
             
-            responderJson($sessoes);
+            responderJson(array_values($sessoes));
             break;
             
-        case 'POST': // Cria uma nova sessão
-            $dados = json_decode(file_get_contents('php://input'), true);
-            
-            if (empty($dados['email']) || empty($dados['senha'])) {
-                throw new Exception('Email e senha são obrigatórios');
-            }
-            
-            // Verifica as credenciais
-            $stmt = $db->prepare('SELECT * FROM usuarios WHERE email = ?');
-            $stmt->execute([$dados['email']]);
-            $usuario = $stmt->fetch();
-            
-            if (!$usuario || !password_verify($dados['senha'], $usuario['senha'])) {
-                throw new Exception('Credenciais inválidas', 401);
-            }
-            
-            try {
-                $db->beginTransaction();
-                
-                // Gera um novo token
-                $token = bin2hex(random_bytes(32));
-                $expira = date('Y-m-d H:i:s', strtotime('+30 days'));
-                
-                // Cria a sessão
-                $stmt = $db->prepare('
-                    INSERT INTO sessoes (id, usuario_id, token, ip, user_agent, data_expiracao)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                ');
-                
-                $sessaoId = uniqid();
-                $stmt->execute([
-                    $sessaoId,
-                    $usuario['id'],
-                    $token,
-                    $_SERVER['REMOTE_ADDR'] ?? '',
-                    $_SERVER['HTTP_USER_AGENT'] ?? '',
-                    $expira
-                ]);
-                
-                // Atualiza o token do usuário
-                $stmt = $db->prepare('
-                    UPDATE usuarios 
-                    SET token = ?, data_atualizacao = CURRENT_TIMESTAMP 
-                    WHERE id = ?
-                ');
-                $stmt->execute([$token, $usuario['id']]);
-                
-                // Remove a senha antes de retornar
-                unset($usuario['senha']);
-                $usuario['token'] = $token;
-                $usuario['sessao_id'] = $sessaoId;
-                
-                $db->commit();
-                responderJson($usuario);
-                
-            } catch (Exception $e) {
-                $db->rollBack();
-                throw $e;
-            }
-            break;
-            
-        case 'DELETE': // Encerra uma sessão
+        case 'DELETE': // Encerra uma sessão específica
             $usuario = verificarAutenticacao();
             $sessaoId = $_GET['id'] ?? null;
             
@@ -101,19 +47,15 @@ try {
                 throw new Exception('ID da sessão não informado');
             }
             
-            // Verifica se a sessão pertence ao usuário
-            $stmt = $db->prepare('
-                SELECT id FROM sessoes 
-                WHERE id = ? AND usuario_id = ?
-            ');
-            $stmt->execute([$sessaoId, $usuario['id']]);
-            if (!$stmt->fetch()) {
-                throw new Exception('Sessão não encontrada', 404);
-            }
-            
-            // Remove a sessão
-            $stmt = $db->prepare('DELETE FROM sessoes WHERE id = ?');
-            $stmt->execute([$sessaoId]);
+            // Como estamos usando logs para controle de sessão,
+            // vamos apenas registrar o logout
+            $db->insert('logs', [
+                'usuarioId' => $usuario['id'],
+                'acao' => 'logout',
+                'detalhes' => "Sessão encerrada: {$sessaoId}",
+                'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
+                'userAgent' => $_SERVER['HTTP_USER_AGENT'] ?? ''
+            ]);
             
             responderJson(['mensagem' => 'Sessão encerrada com sucesso']);
             break;
@@ -126,9 +68,7 @@ try {
     responderErro($e->getMessage(), $e->getCode() ?: 400);
 }
 
-/**
- * Funções auxiliares para identificar o navegador e sistema operacional
- */
+// Funções auxiliares
 function getBrowser($userAgent) {
     $browser = "Desconhecido";
     $browsers = [

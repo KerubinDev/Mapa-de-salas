@@ -1,7 +1,6 @@
 <?php
 require_once 'config.php';
 require_once 'middleware.php';
-require_once __DIR__ . '/../database/Database.php';
 
 // Verifica autenticação
 try {
@@ -14,8 +13,6 @@ try {
 }
 
 try {
-    $db = Database::getInstance()->getConnection();
-    
     // Cria diretório de backup se não existir
     $backupDir = __DIR__ . '/backups';
     if (!file_exists($backupDir)) {
@@ -24,67 +21,52 @@ try {
 
     // Gera nome do arquivo de backup
     $data = date('Y-m-d_H-i-s');
-    $nomeArquivo = "backup_{$data}.sql";
+    $nomeArquivo = "backup_{$data}.json";
     $caminhoCompleto = "{$backupDir}/{$nomeArquivo}";
 
-    // Inicia o arquivo de backup
-    $backup = "-- Backup gerado em " . date('Y-m-d H:i:s') . "\n";
-    $backup .= "-- Usuário: {$usuario['nome']}\n\n";
-
-    // Tabelas para backup
-    $tabelas = ['usuarios', 'salas', 'turmas', 'reservas', 'configuracoes', 'logs'];
-
-    foreach ($tabelas as $tabela) {
-        $backup .= "\n-- Dados da tabela {$tabela}\n";
-        
-        // Obtém a estrutura da tabela
-        $stmt = $db->query("SELECT sql FROM sqlite_master WHERE type='table' AND name='{$tabela}'");
-        $estrutura = $stmt->fetch();
-        $backup .= $estrutura['sql'] . ";\n\n";
-
-        // Obtém os dados da tabela
-        $stmt = $db->query("SELECT * FROM {$tabela}");
-        $dados = $stmt->fetchAll(PDO::FETCH_ASSOC);
-
-        foreach ($dados as $registro) {
-            $colunas = array_keys($registro);
-            $valores = array_map(function($valor) use ($db) {
-                if ($valor === null) return 'NULL';
-                return $db->quote($valor);
-            }, $registro);
-
-            $backup .= "INSERT INTO {$tabela} (" . 
-                      implode(', ', $colunas) . 
-                      ") VALUES (" . 
-                      implode(', ', $valores) . 
-                      ");\n";
-        }
-    }
+    // Obtém os dados do banco
+    $db = JsonDatabase::getInstance();
+    $dados = [
+        'usuarios' => $db->getData('usuarios'),
+        'salas' => $db->getData('salas'),
+        'turmas' => $db->getData('turmas'),
+        'reservas' => $db->getData('reservas'),
+        'configuracoes' => $db->getData('configuracoes'),
+        'logs' => $db->getData('logs'),
+        'metadados' => [
+            'versao' => '1.0',
+            'data' => date('Y-m-d H:i:s'),
+            'usuario' => $usuario['nome'],
+            'email' => $usuario['email']
+        ]
+    ];
 
     // Salva o arquivo de backup
-    if (!file_put_contents($caminhoCompleto, $backup)) {
+    if (!file_put_contents($caminhoCompleto, json_encode($dados, JSON_PRETTY_PRINT))) {
         throw new Exception('Erro ao salvar arquivo de backup');
     }
 
     // Atualiza a data do último backup nas configurações
-    $stmt = $db->prepare('
-        INSERT OR REPLACE INTO configuracoes (chave, valor, data_atualizacao)
-        VALUES (?, ?, CURRENT_TIMESTAMP)
-    ');
-    $stmt->execute(['ultimo_backup', date('Y-m-d H:i:s')]);
+    $configsExistentes = $db->query('configuracoes', ['chave' => 'ultimoBackup']);
+    if (empty($configsExistentes)) {
+        $db->insert('configuracoes', [
+            'chave' => 'ultimoBackup',
+            'valor' => date('Y-m-d H:i:s')
+        ]);
+    } else {
+        $config = reset($configsExistentes);
+        $db->update('configuracoes', $config['id'], [
+            'valor' => date('Y-m-d H:i:s')
+        ]);
+    }
 
     // Registra o backup no log
-    $stmt = $db->prepare('
-        INSERT INTO logs (id, usuario_id, acao, detalhes, ip, user_agent)
-        VALUES (?, ?, ?, ?, ?, ?)
-    ');
-    $stmt->execute([
-        uniqid(),
-        $usuario['id'],
-        'backup',
-        "Backup realizado: {$nomeArquivo}",
-        $_SERVER['REMOTE_ADDR'] ?? '',
-        $_SERVER['HTTP_USER_AGENT'] ?? ''
+    $db->insert('logs', [
+        'usuarioId' => $usuario['id'],
+        'acao' => 'backup',
+        'detalhes' => "Backup realizado: {$nomeArquivo}",
+        'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
+        'userAgent' => $_SERVER['HTTP_USER_AGENT'] ?? ''
     ]);
 
     // Retorna sucesso

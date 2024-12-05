@@ -1,7 +1,6 @@
 <?php
 require_once '../config.php';
 require_once '../middleware.php';
-require_once __DIR__ . '/../../database/Database.php';
 
 // Verifica autenticação
 try {
@@ -13,26 +12,33 @@ try {
     responderErro($e->getMessage(), $e->getCode());
 }
 
-/**
- * Gerenciador de Usuários
- */
 class GerenciadorUsuarios {
     private $_db;
     
     public function __construct() {
-        $this->_db = Database::getInstance()->getConnection();
+        $this->_db = JsonDatabase::getInstance();
     }
     
     /**
      * Lista todos os usuários
      */
     public function listar() {
-        $stmt = $this->_db->query('
-            SELECT id, nome, email, tipo, data_criacao, data_atualizacao
-            FROM usuarios 
-            ORDER BY nome
-        ');
-        responderJson($stmt->fetchAll());
+        $usuarios = $this->_db->getData('usuarios');
+        
+        // Remove dados sensíveis
+        foreach ($usuarios as &$usuario) {
+            unset($usuario['senha']);
+            unset($usuario['token']);
+            unset($usuario['tokenRecuperacao']);
+            unset($usuario['tokenExpiracao']);
+        }
+        
+        // Ordena por nome
+        usort($usuarios, function($a, $b) {
+            return strcmp($a['nome'], $b['nome']);
+        });
+        
+        responderJson($usuarios);
     }
     
     /**
@@ -48,6 +54,10 @@ class GerenciadorUsuarios {
             throw new Exception('Email é obrigatório');
         }
         
+        if (!filter_var($dados['email'], FILTER_VALIDATE_EMAIL)) {
+            throw new Exception('Email inválido');
+        }
+        
         if (empty($dados['senha'])) {
             throw new Exception('Senha é obrigatória');
         }
@@ -57,162 +67,100 @@ class GerenciadorUsuarios {
         }
         
         // Verifica se o email já está em uso
-        $stmt = $this->_db->prepare('SELECT id FROM usuarios WHERE email = ?');
-        $stmt->execute([$dados['email']]);
-        if ($stmt->fetch()) {
+        $usuarioExistente = $this->_db->query('usuarios', ['email' => $dados['email']]);
+        if (!empty($usuarioExistente)) {
             throw new Exception('Email já cadastrado');
         }
         
-        try {
-            $this->_db->beginTransaction();
-            
-            // Insere o usuário
-            $stmt = $this->_db->prepare('
-                INSERT INTO usuarios (id, nome, email, senha, tipo)
-                VALUES (?, ?, ?, ?, ?)
-            ');
-            
-            $id = uniqid();
-            $stmt->execute([
-                $id,
-                $dados['nome'],
-                $dados['email'],
-                password_hash($dados['senha'], PASSWORD_DEFAULT),
-                $dados['tipo'] ?? 'usuario'
-            ]);
-            
-            // Busca o usuário criado
-            $stmt = $this->_db->prepare('
-                SELECT id, nome, email, tipo, data_criacao
-                FROM usuarios WHERE id = ?
-            ');
-            $stmt->execute([$id]);
-            $usuario = $stmt->fetch();
-            
-            $this->_db->commit();
-            responderJson($usuario, 201);
-            
-        } catch (Exception $e) {
-            $this->_db->rollBack();
-            throw $e;
-        }
+        // Cria o usuário
+        $usuario = $this->_db->insert('usuarios', [
+            'nome' => $dados['nome'],
+            'email' => $dados['email'],
+            'senha' => password_hash($dados['senha'], PASSWORD_DEFAULT),
+            'tipo' => $dados['tipo'] ?? 'usuario'
+        ]);
+        
+        // Remove dados sensíveis
+        unset($usuario['senha']);
+        
+        responderJson($usuario, 201);
     }
     
     /**
-     * Atualiza um usuário existente
+     * Atualiza um usuário
      */
     public function atualizar($id, $dados) {
-        // Não permite alterar o admin principal
-        if ($id === 'admin') {
-            throw new Exception('Não é permitido alterar o usuário admin');
-        }
-        
         // Verifica se o usuário existe
-        $stmt = $this->_db->prepare('SELECT * FROM usuarios WHERE id = ?');
-        $stmt->execute([$id]);
-        if (!$stmt->fetch()) {
+        $usuarioExistente = $this->_db->query('usuarios', ['id' => $id]);
+        if (empty($usuarioExistente)) {
             throw new Exception('Usuário não encontrado', 404);
         }
         
-        // Verifica se o novo email já está em uso
-        if (!empty($dados['email'])) {
-            $stmt = $this->_db->prepare('
-                SELECT id FROM usuarios 
-                WHERE email = ? AND id != ?
-            ');
-            $stmt->execute([$dados['email'], $id]);
-            if ($stmt->fetch()) {
-                throw new Exception('Email já cadastrado');
+        // Validações
+        if (isset($dados['email'])) {
+            if (!filter_var($dados['email'], FILTER_VALIDATE_EMAIL)) {
+                throw new Exception('Email inválido');
+            }
+            
+            $outroUsuario = $this->_db->query('usuarios', ['email' => $dados['email']]);
+            if (!empty($outroUsuario) && reset($outroUsuario)['id'] !== $id) {
+                throw new Exception('Email já está em uso');
             }
         }
         
-        try {
-            $this->_db->beginTransaction();
-            
-            // Monta a query de atualização
-            $campos = [];
-            $valores = [];
-            
-            if (isset($dados['nome'])) {
-                $campos[] = 'nome = ?';
-                $valores[] = $dados['nome'];
+        if (isset($dados['senha'])) {
+            if (strlen($dados['senha']) < 6) {
+                throw new Exception('A senha deve ter no mínimo 6 caracteres');
             }
-            
-            if (isset($dados['email'])) {
-                $campos[] = 'email = ?';
-                $valores[] = $dados['email'];
-            }
-            
-            if (isset($dados['senha'])) {
-                if (strlen($dados['senha']) < 6) {
-                    throw new Exception('A senha deve ter no mínimo 6 caracteres');
-                }
-                $campos[] = 'senha = ?';
-                $valores[] = password_hash($dados['senha'], PASSWORD_DEFAULT);
-            }
-            
-            if (isset($dados['tipo'])) {
-                $campos[] = 'tipo = ?';
-                $valores[] = $dados['tipo'];
-            }
-            
-            $campos[] = 'data_atualizacao = CURRENT_TIMESTAMP';
-            
-            // Adiciona o ID no final do array de valores
-            $valores[] = $id;
-            
-            $sql = 'UPDATE usuarios SET ' . implode(', ', $campos) . ' WHERE id = ?';
-            $stmt = $this->_db->prepare($sql);
-            $stmt->execute($valores);
-            
-            // Busca o usuário atualizado
-            $stmt = $this->_db->prepare('
-                SELECT id, nome, email, tipo, data_criacao, data_atualizacao
-                FROM usuarios WHERE id = ?
-            ');
-            $stmt->execute([$id]);
-            $usuario = $stmt->fetch();
-            
-            $this->_db->commit();
-            responderJson($usuario);
-            
-        } catch (Exception $e) {
-            $this->_db->rollBack();
-            throw $e;
+            $dados['senha'] = password_hash($dados['senha'], PASSWORD_DEFAULT);
         }
+        
+        // Remove campos que não podem ser alterados
+        unset($dados['id']);
+        unset($dados['token']);
+        unset($dados['tokenRecuperacao']);
+        unset($dados['tokenExpiracao']);
+        
+        // Atualiza o usuário
+        $usuario = $this->_db->update('usuarios', $id, $dados);
+        if (!$usuario) {
+            throw new Exception('Erro ao atualizar usuário');
+        }
+        
+        // Remove dados sensíveis
+        unset($usuario['senha']);
+        unset($usuario['token']);
+        unset($usuario['tokenRecuperacao']);
+        unset($usuario['tokenExpiracao']);
+        
+        responderJson($usuario);
     }
     
     /**
      * Remove um usuário
      */
     public function remover($id) {
-        // Não permite remover o admin principal
-        if ($id === 'admin') {
-            throw new Exception('Não é permitido remover o usuário admin');
+        // Verifica se o usuário existe
+        $usuarioExistente = $this->_db->query('usuarios', ['id' => $id]);
+        if (empty($usuarioExistente)) {
+            throw new Exception('Usuário não encontrado', 404);
         }
         
-        try {
-            $this->_db->beginTransaction();
-            
-            // Remove o usuário
-            $stmt = $this->_db->prepare('DELETE FROM usuarios WHERE id = ?');
-            $stmt->execute([$id]);
-            
-            if ($stmt->rowCount() === 0) {
-                throw new Exception('Usuário não encontrado', 404);
-            }
-            
-            $this->_db->commit();
-            responderJson(['mensagem' => 'Usuário removido com sucesso']);
-            
-        } catch (Exception $e) {
-            $this->_db->rollBack();
-            throw $e;
+        // Não permite remover o próprio usuário
+        if ($id === $this->_usuario['id']) {
+            throw new Exception('Não é possível remover o próprio usuário');
         }
+        
+        // Remove o usuário
+        if (!$this->_db->delete('usuarios', $id)) {
+            throw new Exception('Erro ao remover usuário');
+        }
+        
+        responderJson(['mensagem' => 'Usuário removido com sucesso']);
     }
 }
 
-// Roteamento das requisições
+// Roteamento
 $gerenciador = new GerenciadorUsuarios();
 $metodo = $_SERVER['REQUEST_METHOD'];
 $id = $_GET['id'] ?? null;

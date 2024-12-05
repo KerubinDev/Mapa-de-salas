@@ -1,0 +1,13 @@
+{
+    "usuarios": [],
+    "salas": [],
+    "turmas": [],
+    "reservas": [],
+    "configuracoes": [],
+    "logs": [],
+    "metadados": {
+        "versao": "1.0.0",
+        "ultimaAtualizacao": null,
+        "criadoEm": "2024-01-01 00:00:00"
+    }
+} 

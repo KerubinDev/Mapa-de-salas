@@ -1,0 +1,6 @@
+- *.db
+- *.sqlite
+- *.sqlite3
++ database/data.json
++ database/backups/*
++ !database/backups/.gitkeep 

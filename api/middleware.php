@@ -1,45 +1,87 @@
 <?php
 require_once 'config.php';
-require_once 'auth/AuthManager.php';
 
 /**
  * Verifica se o usuário está autenticado
  */
 function verificarAutenticacao() {
-    // Verifica se o token foi enviado no header
     $headers = getallheaders();
     $authHeader = $headers['Authorization'] ?? '';
     
-    if (empty($authHeader) || !preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
+    if (!preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
         throw new Exception('Token não fornecido', 401);
     }
-
-    $token = $matches[1];
-    $auth = AuthManager::getInstance();
     
-    try {
-        $usuario = $auth->verificarToken($token);
-        if (!$usuario) {
-            throw new Exception('Token inválido', 401);
-        }
-        return $usuario;
-    } catch (Exception $e) {
+    $token = $matches[1];
+    $db = JsonDatabase::getInstance();
+    
+    // Busca o usuário pelo token
+    $usuarios = $db->query('usuarios', ['token' => $token]);
+    $usuario = reset($usuarios);
+    
+    if (!$usuario) {
         throw new Exception('Token inválido', 401);
     }
+    
+    return $usuario;
 }
 
 /**
- * Verifica se é uma requisição CORS preflight
+ * Trata requisições CORS
  */
 function tratarCORS() {
-    header('Access-Control-Allow-Origin: *');
-    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type, Authorization');
-    header('Content-Type: application/json');
-
+    // Permite acesso de qualquer origem em desenvolvimento
     if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+        header('Access-Control-Allow-Origin: *');
+        header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+        header('Access-Control-Allow-Headers: Content-Type, Authorization');
+        header('Access-Control-Max-Age: 86400'); // 24 horas
         exit(0);
     }
+
+    // Configurações para outras requisições
+    header('Access-Control-Allow-Origin: *');
+    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization');
+}
+
+/**
+ * Verifica permissões do usuário
+ */
+function verificarPermissao($usuario, $permissao) {
+    $permissoes = [
+        'gerenciarUsuarios' => ['admin'],
+        'gerenciarSalas' => ['admin', 'coordenador'],
+        'gerenciarTurmas' => ['admin', 'coordenador'],
+        'fazerReservas' => ['admin', 'coordenador', 'professor'],
+        'verLogs' => ['admin'],
+        'fazerBackup' => ['admin']
+    ];
+    
+    if (!isset($permissoes[$permissao])) {
+        throw new Exception('Permissão inválida');
+    }
+    
+    if (!in_array($usuario['tipo'], $permissoes[$permissao])) {
+        throw new Exception('Acesso negado', 403);
+    }
+    
+    return true;
+}
+
+/**
+ * Registra uma ação no log
+ */
+function registrarLog($usuarioId, $acao, $detalhes) {
+    $db = JsonDatabase::getInstance();
+    
+    return $db->insert('logs', [
+        'usuarioId' => $usuarioId,
+        'acao' => $acao,
+        'detalhes' => $detalhes,
+        'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
+        'userAgent' => $_SERVER['HTTP_USER_AGENT'] ?? ''
+    ]);
 }
 
 // Aplica tratamento CORS para todas as requisições

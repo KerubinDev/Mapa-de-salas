@@ -1,58 +1,59 @@
 <?php
-require_once __DIR__ . '/../database/Database.php';
+require_once __DIR__ . '/../database/JsonDatabase.php';
 
 try {
-    $db = Database::getInstance()->getConnection();
+    $db = JsonDatabase::getInstance();
     
     echo "Verificando banco de dados...\n\n";
     
-    // Verifica se as tabelas existem
-    $tabelas = [
+    // Verifica se as coleções existem
+    $colecoes = [
         'usuarios',
-        'sessoes',
-        'logs',
         'salas',
         'turmas',
         'reservas',
-        'configuracoes'
+        'configuracoes',
+        'logs'
     ];
     
-    foreach ($tabelas as $tabela) {
-        $stmt = $db->query("SELECT name FROM sqlite_master WHERE type='table' AND name='$tabela'");
-        if (!$stmt->fetch()) {
-            echo "ERRO: Tabela '$tabela' não encontrada!\n";
-            exit(1);
+    foreach ($colecoes as $colecao) {
+        $dados = $db->getData($colecao);
+        if ($dados === null) {
+            throw new Exception("Coleção '$colecao' não encontrada");
         }
-        echo "OK: Tabela '$tabela' existe\n";
+        echo "OK: Coleção '$colecao' encontrada\n";
     }
     
-    // Verifica se o usuário admin existe
-    $stmt = $db->query("SELECT * FROM usuarios WHERE email='admin@sistema.local'");
-    $admin = $stmt->fetch();
-    if (!$admin) {
-        echo "ERRO: Usuário admin não encontrado!\n";
-        exit(1);
+    // Verifica se existe usuário admin
+    $usuarios = $db->query('usuarios', ['email' => 'admin@sistema.local']);
+    if (empty($usuarios)) {
+        throw new Exception("Usuário admin não encontrado");
     }
-    echo "OK: Usuário admin existe\n";
+    $admin = reset($usuarios);
+    if ($admin['tipo'] !== 'admin') {
+        throw new Exception("Usuário admin com tipo incorreto");
+    }
+    echo "OK: Usuário admin encontrado\n";
     
-    // Verifica se a senha do admin está correta
-    if (!password_verify('admin123', $admin['senha'])) {
-        echo "ERRO: Senha do admin está incorreta!\n";
-        
-        // Corrige a senha do admin
-        $stmt = $db->prepare('UPDATE usuarios SET senha = ? WHERE email = ?');
-        $stmt->execute([
-            password_hash('admin123', PASSWORD_DEFAULT),
-            'admin@sistema.local'
-        ]);
-        echo "OK: Senha do admin corrigida\n";
+    // Verifica configurações básicas
+    $configsNecessarias = [
+        'horarioAbertura',
+        'horarioFechamento',
+        'diasFuncionamento'
+    ];
+    
+    foreach ($configsNecessarias as $chave) {
+        $configs = $db->query('configuracoes', ['chave' => $chave]);
+        if (empty($configs)) {
+            throw new Exception("Configuração '$chave' não encontrada");
+        }
+        echo "OK: Configuração '$chave' encontrada\n";
     }
     
     // Verifica se o banco está vazio
-    foreach ($tabelas as $tabela) {
-        $stmt = $db->query("SELECT COUNT(*) as total FROM $tabela");
-        $count = $stmt->fetch()['total'];
-        echo "INFO: Tabela '$tabela' tem $count registros\n";
+    foreach ($colecoes as $colecao) {
+        $total = count($db->getData($colecao));
+        echo "INFO: Coleção '$colecao' tem $total registros\n";
     }
     
     echo "\nBanco de dados verificado com sucesso!\n";

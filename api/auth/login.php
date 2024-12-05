@@ -1,7 +1,6 @@
 <?php
 require_once '../config.php';
 require_once '../middleware.php';
-require_once __DIR__ . '/../../database/Database.php';
 
 // Verifica se é uma requisição POST
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
@@ -16,80 +15,69 @@ try {
         throw new Exception('Email e senha são obrigatórios');
     }
     
-    $db = Database::getInstance()->getConnection();
-    
     // Busca o usuário pelo email
-    $stmt = $db->prepare('
-        SELECT id, nome, email, senha, tipo, data_criacao, data_atualizacao
-        FROM usuarios 
-        WHERE email = ?
-        LIMIT 1
-    ');
-    $stmt->execute([$dados['email']]);
-    $usuario = $stmt->fetch();
+    $usuarios = $db->query('usuarios', ['email' => $dados['email']]);
+    $usuario = reset($usuarios);
     
     if (!$usuario || !password_verify($dados['senha'], $usuario['senha'])) {
         throw new Exception('Email ou senha inválidos', 401);
     }
     
-    try {
-        $db->beginTransaction();
+    // Gera um novo token
+    $token = bin2hex(random_bytes(32));
+    
+    // Atualiza o token do usuário
+    $usuario = $db->update('usuarios', $usuario['id'], [
+        'token' => $token,
+        'ultimoLogin' => date('Y-m-d H:i:s')
+    ]);
+    
+    // Remove dados sensíveis
+    unset($usuario['senha']);
+    
+    // Registra o login no log
+    $db->insert('logs', [
+        'usuarioId' => $usuario['id'],
+        'acao' => 'login',
+        'detalhes' => 'Login realizado com sucesso',
+        'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
+        'userAgent' => $_SERVER['HTTP_USER_AGENT'] ?? ''
+    ]);
+    
+    // Busca estatísticas do usuário
+    if ($usuario['tipo'] === 'professor') {
+        $reservas = $db->query('reservas', ['professorId' => $usuario['id']]);
+        $salas = array_unique(array_column($reservas, 'salaId'));
         
-        // Gera um novo token
-        $token = bin2hex(random_bytes(32));
-        $expira = date('Y-m-d H:i:s', strtotime('+30 days'));
-        
-        // Cria uma nova sessão
-        $stmt = $db->prepare('
-            INSERT INTO sessoes (id, usuario_id, token, ip, user_agent, data_expiracao)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ');
-        
-        $sessaoId = uniqid();
-        $stmt->execute([
-            $sessaoId,
-            $usuario['id'],
-            $token,
-            $_SERVER['REMOTE_ADDR'] ?? '',
-            $_SERVER['HTTP_USER_AGENT'] ?? '',
-            $expira
-        ]);
-        
-        // Atualiza o token do usuário
-        $stmt = $db->prepare('
-            UPDATE usuarios 
-            SET token = ?, data_atualizacao = CURRENT_TIMESTAMP 
-            WHERE id = ?
-        ');
-        $stmt->execute([$token, $usuario['id']]);
-        
-        // Registra o login no log
-        $stmt = $db->prepare('
-            INSERT INTO logs (id, usuario_id, acao, detalhes, ip, user_agent)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ');
-        
-        $stmt->execute([
-            uniqid(),
-            $usuario['id'],
-            'login',
-            'Login realizado com sucesso',
-            $_SERVER['REMOTE_ADDR'] ?? '',
-            $_SERVER['HTTP_USER_AGENT'] ?? ''
-        ]);
-        
-        // Remove a senha antes de retornar
-        unset($usuario['senha']);
-        $usuario['token'] = $token;
-        $usuario['sessao_id'] = $sessaoId;
-        
-        $db->commit();
-        responderJson($usuario);
-        
-    } catch (Exception $e) {
-        $db->rollBack();
-        throw $e;
+        $usuario['estatisticas'] = [
+            'totalReservas' => count($reservas),
+            'totalSalas' => count($salas)
+        ];
     }
+    
+    // Busca últimas atividades
+    $logs = array_filter($db->getData('logs'), function($log) use ($usuario) {
+        return $log['usuarioId'] === $usuario['id'];
+    });
+    
+    // Ordena logs por data decrescente e pega os 5 últimos
+    usort($logs, function($a, $b) {
+        return strtotime($b['dataCriacao']) - strtotime($a['dataCriacao']);
+    });
+    
+    $usuario['ultimasAtividades'] = array_slice($logs, 0, 5);
+    
+    // Define permissões do usuário
+    $usuario['permissoes'] = [
+        'gerenciarUsuarios' => $usuario['tipo'] === 'admin',
+        'gerenciarSalas' => in_array($usuario['tipo'], ['admin', 'coordenador']),
+        'gerenciarTurmas' => in_array($usuario['tipo'], ['admin', 'coordenador']),
+        'fazerReservas' => in_array($usuario['tipo'], ['admin', 'coordenador', 'professor']),
+        'verLogs' => $usuario['tipo'] === 'admin',
+        'fazerBackup' => $usuario['tipo'] === 'admin'
+    ];
+    
+    responderJson($usuario);
     
 } catch (Exception $e) {
     responderErro($e->getMessage(), $e->getCode() ?: 400);
