@@ -7,7 +7,10 @@ class GerenciadorLogin {
     }
     
     /**
-     * Realiza o login
+     * Realiza o login do usuário
+     * @param {string} email Email do usuário
+     * @param {string} senha Senha do usuário
+     * @returns {Promise<Object>} Dados do usuário logado
      */
     async realizarLogin(email, senha) {
         try {
@@ -32,11 +35,35 @@ class GerenciadorLogin {
 
             return dados.dados;
         } catch (erro) {
+            console.error('Erro no login:', erro);
             if (erro.name === 'SyntaxError') {
                 throw new Error('Erro ao processar resposta do servidor');
             }
             throw erro;
         }
+    }
+
+    /**
+     * Verifica se a senha fornecida corresponde à senha armazenada
+     * @param {string} senhaFornecida Senha fornecida pelo usuário
+     * @param {string} senhaArmazenada Hash da senha armazenada
+     * @returns {Promise<boolean>} True se a senha estiver correta
+     */
+    async verificarSenha(senhaFornecida, senhaArmazenada) {
+        const resposta = await fetch(`${this.apiUrl}/verificar-senha`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                senha: senhaFornecida,
+                hash: senhaArmazenada
+            })
+        });
+
+        const dados = await resposta.json();
+        return dados.sucesso;
     }
 }
 
@@ -81,4 +108,4 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     });
-}); 
+});
