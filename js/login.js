@@ -14,41 +14,59 @@ class GerenciadorLogin {
      */
     async realizarLogin(email, senha) {
         try {
-            console.log('Tentando login com email:', email);
-            
+            // Validação básica dos inputs
+            if (!email || !senha) {
+                throw new Error('Email e senha são obrigatórios');
+            }
+
+            console.log('Iniciando tentativa de login:', {
+                email,
+                urlApi: this.apiUrl,
+                temSenha: !!senha
+            });
+
+            const dadosRequisicao = {
+                email: email.trim(),
+                senha: senha,
+                timestamp: new Date().getTime()
+            };
+
+            console.log('Payload da requisição:', 
+                JSON.stringify(dadosRequisicao, null, 2));
+
             const resposta = await fetch(this.apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({ 
-                    email, 
-                    senha,
-                    timestamp: new Date().getTime()
-                })
+                body: JSON.stringify(dadosRequisicao),
+                // Adiciona credentials para garantir envio de cookies
+                credentials: 'include'
             });
 
-            console.log('Status da resposta:', resposta.status);
+            console.log('Resposta do servidor:', {
+                status: resposta.status,
+                headers: Object.fromEntries(resposta.headers.entries())
+            });
+
             const dados = await resposta.json();
-            console.log('Dados da resposta:', {
-                sucesso: dados.sucesso,
-                erro: dados.erro
-            });
+            console.log('Dados da resposta:', dados);
 
-            if (!resposta.ok) {
+            if (!resposta.ok || !dados.sucesso) {
                 throw new Error(
                     dados.erro?.mensagem || 
-                    `Erro no servidor: ${resposta.status}`
+                    `Falha na autenticação (${resposta.status})`
                 );
             }
 
             return dados.dados;
         } catch (erro) {
-            console.error('Detalhes do erro:', {
+            console.error('Erro detalhado:', {
                 mensagem: erro.message,
                 tipo: erro.name,
-                stack: erro.stack
+                stack: erro.stack,
+                timestamp: new Date().toISOString()
             });
             throw erro;
         }
