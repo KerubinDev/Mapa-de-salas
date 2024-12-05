@@ -14,20 +14,54 @@ error_log("Requisição recebida: " . $_SERVER['REQUEST_METHOD'] . " " . $_SERVE
 $metodo = $_SERVER['REQUEST_METHOD'];
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
-// Se for a raiz, serve o index.html
-if ($uri === '/' || $uri === '') {
-    if (file_exists(__DIR__ . '/index.html')) {
-        header('Content-Type: text/html');
-        readfile(__DIR__ . '/index.html');
-        exit;
+// Mapeia extensões para tipos MIME
+$mimeTypes = [
+    'html' => 'text/html',
+    'css' => 'text/css',
+    'js' => 'application/javascript',
+    'json' => 'application/json',
+    'png' => 'image/png',
+    'jpg' => 'image/jpeg',
+    'gif' => 'image/gif'
+];
+
+// Verifica se é uma página HTML
+if ($metodo === 'GET') {
+    // Remove trailing slash
+    $uri = rtrim($uri, '/');
+    
+    // Mapeia URLs para arquivos HTML
+    $htmlFiles = [
+        '/' => '/index.html',
+        '/admin' => '/admin/index.html',
+        '/coordenador' => '/coordenador/index.html',
+        '/login' => '/login.html'
+    ];
+    
+    if (isset($htmlFiles[$uri])) {
+        $arquivo = __DIR__ . $htmlFiles[$uri];
+        if (file_exists($arquivo)) {
+            header('Content-Type: text/html');
+            readfile($arquivo);
+            exit;
+        }
     }
 }
 
-// Remove o prefixo do path base se existir
-$uri = preg_replace('/^\/api/', '', $uri);
-$uri = '/' . trim($uri, '/');
+// Verifica se é um arquivo estático
+$ext = pathinfo($uri, PATHINFO_EXTENSION);
+if ($ext && file_exists(__DIR__ . $uri)) {
+    $contentType = $mimeTypes[$ext] ?? 'application/octet-stream';
+    header("Content-Type: $contentType");
+    readfile(__DIR__ . $uri);
+    exit;
+}
 
-error_log("URI processada: $uri");
+// Se for uma rota da API, remove o prefixo /api
+if (strpos($uri, '/api/') === 0) {
+    $uri = substr($uri, 4);
+}
+$uri = '/' . trim($uri, '/');
 
 // Define as rotas da API
 $rotas = [
@@ -56,29 +90,8 @@ $rotas = [
     'DELETE:/reserva' => 'api/reserva.php'
 ];
 
-// Mapeia extensões para tipos MIME
-$mimeTypes = [
-    'html' => 'text/html',
-    'css' => 'text/css',
-    'js' => 'application/javascript',
-    'json' => 'application/json',
-    'png' => 'image/png',
-    'jpg' => 'image/jpeg',
-    'gif' => 'image/gif'
-];
-
-// Verifica se é um arquivo estático
-$ext = pathinfo($uri, PATHINFO_EXTENSION);
-if ($ext && file_exists(__DIR__ . $uri)) {
-    $contentType = $mimeTypes[$ext] ?? 'application/octet-stream';
-    header("Content-Type: $contentType");
-    readfile(__DIR__ . $uri);
-    exit;
-}
-
 // Verifica se é uma rota da API
-$rotaBase = preg_replace('/\.php$/', '', $uri); // Remove .php do final
-$rotaChave = "{$metodo}:{$rotaBase}";
+$rotaChave = "{$metodo}:{$uri}";
 error_log("Procurando rota: $rotaChave");
 
 if (isset($rotas[$rotaChave])) {
@@ -104,7 +117,7 @@ echo json_encode([
         'detalhes' => [
             'metodo' => $metodo,
             'uri' => $uri,
-            'rotaBase' => $rotaBase,
+            'rotaBase' => $uri,
             'rotaChave' => $rotaChave,
             'requestUri' => $_SERVER['REQUEST_URI'],
             'rotasDisponiveis' => array_keys($rotas)
