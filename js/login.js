@@ -38,25 +38,28 @@ class GerenciadorLogin {
             const response = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
                 },
                 body: JSON.stringify(dados)
             });
             
             // Verifica se houve erro na requisição
-            if (!response.ok) {
-                const erro = await response.json();
-                throw new Error(erro.erro || 'Erro ao realizar login');
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error('Resposta inválida do servidor');
             }
             
-            // Processa a resposta
-            const usuario = await response.json();
+            const data = await response.json();
+            if (!response.ok) {
+                throw new Error(data.erro || 'Erro ao realizar login');
+            }
             
             // Salva os dados do usuário
             if (form.lembrar.checked) {
-                localStorage.setItem('usuario', JSON.stringify(usuario));
+                localStorage.setItem('usuario', JSON.stringify(data));
             } else {
-                sessionStorage.setItem('usuario', JSON.stringify(usuario));
+                sessionStorage.setItem('usuario', JSON.stringify(data));
             }
             
             // Redireciona para a página inicial

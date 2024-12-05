@@ -1,16 +1,10 @@
 # Habilita o módulo de reescrita
 RewriteEngine On
 
-# Redireciona todas as requisições para o index.php
+# Redireciona todas as requisições para o router.php
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule . index.php [L]
-
-# Define tipos MIME
-AddType application/javascript .js
-AddType text/css .css
-AddType text/html .html
-AddType application/json .json
+RewriteRule . router.php [L]
 
 # Headers CORS
 Header set Access-Control-Allow-Origin "*"
@@ -27,3 +21,17 @@ Header set Access-Control-Allow-Headers "Content-Type, Authorization"
     Order Allow,Deny
     Deny from all
 </Files>
+
+# Compressão GZIP
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/plain
+    AddOutputFilterByType DEFLATE text/html
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE application/json
+</IfModule>
+
+# Cache para arquivos estáticos
+<FilesMatch "\.(ico|pdf|jpg|jpeg|png|gif|js|css|swf)$">
+    Header set Cache-Control "max-age=31536000, public"
+</FilesMatch>
