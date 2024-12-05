@@ -15,10 +15,7 @@ $metodo = $_SERVER['REQUEST_METHOD'];
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
 // Remove o prefixo do path base se existir
-$basePath = '/api';
-if (strpos($uri, $basePath) === 0) {
-    $uri = substr($uri, strlen($basePath));
-}
+$uri = preg_replace('/^\/api/', '', $uri); // Remove /api do início
 $uri = '/' . trim($uri, '/');
 
 error_log("URI processada: $uri");
@@ -38,16 +35,16 @@ $rotas = [
     'DELETE:/sala' => 'api/sala.php',
     
     // Rotas de turmas
-    'GET:/api/turma' => 'api/turma.php',
-    'POST:/api/turma' => 'api/turma.php',
-    'PUT:/api/turma' => 'api/turma.php',
-    'DELETE:/api/turma' => 'api/turma.php',
+    'GET:/turma' => 'api/turma.php',
+    'POST:/turma' => 'api/turma.php',
+    'PUT:/turma' => 'api/turma.php',
+    'DELETE:/turma' => 'api/turma.php',
     
     // Rotas de reservas
-    'GET:/api/reserva' => 'api/reserva.php',
-    'POST:/api/reserva' => 'api/reserva.php',
-    'PUT:/api/reserva' => 'api/reserva.php',
-    'DELETE:/api/reserva' => 'api/reserva.php'
+    'GET:/reserva' => 'api/reserva.php',
+    'POST:/reserva' => 'api/reserva.php',
+    'PUT:/reserva' => 'api/reserva.php',
+    'DELETE:/reserva' => 'api/reserva.php'
 ];
 
 // Verifica se é uma rota da API
@@ -80,7 +77,8 @@ echo json_encode([
             'metodo' => $metodo,
             'uri' => $uri,
             'rotaChave' => $rotaChave,
-            'requestUri' => $_SERVER['REQUEST_URI']
+            'requestUri' => $_SERVER['REQUEST_URI'],
+            'rotasDisponiveis' => array_keys($rotas)
         ]
     ]
 ]);
