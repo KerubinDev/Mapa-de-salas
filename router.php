@@ -1,127 +1,107 @@
 <?php
-require_once __DIR__ . '/api/config.php';
+/**
+ * Router principal da aplicação
+ * 
+ * @author Seu Nome
+ */
 
-// Configurações de erro para desenvolvimento
-if (APP_DEBUG) {
-    ini_set('display_errors', 1);
-    error_reporting(E_ALL);
+// Define constantes
+define('DIRETORIO_BASE', __DIR__);
+define('DIRETORIO_API', __DIR__ . '/api');
+
+// Configura headers padrão
+header('Content-Type: application/json; charset=UTF-8');
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
+
+// Trata requisições OPTIONS (CORS)
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    exit(0);
 }
 
-// Log para debug
-error_log("Requisição recebida: " . $_SERVER['REQUEST_METHOD'] . " " . $_SERVER['REQUEST_URI']);
+/**
+ * Serve um arquivo estático se ele existir
+ * 
+ * @param string $caminhoArquivo Caminho do arquivo requisitado
+ * @return bool True se o arquivo foi servido, False caso contrário
+ */
+function servirArquivoEstatico($caminhoArquivo) {
+    if (file_exists($caminhoArquivo) && is_file($caminhoArquivo)) {
+        // Define o tipo MIME baseado na extensão
+        $extensao = strtolower(pathinfo($caminhoArquivo, PATHINFO_EXTENSION));
+        $mimeTypes = [
+            'html' => 'text/html',
+            'css'  => 'text/css',
+            'js'   => 'application/javascript',
+            'json' => 'application/json',
+            'png'  => 'image/png',
+            'jpg'  => 'image/jpeg',
+            'jpeg' => 'image/jpeg',
+            'gif'  => 'image/gif',
+            'ico'  => 'image/x-icon',
+            'webmanifest' => 'application/manifest+json'
+        ];
 
-// Obtém o método e caminho da requisição
-$metodo = $_SERVER['REQUEST_METHOD'];
-$uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
-
-// Mapeia extensões para tipos MIME
-$mimeTypes = [
-    'html' => 'text/html',
-    'css' => 'text/css',
-    'js' => 'application/javascript',
-    'json' => 'application/json',
-    'png' => 'image/png',
-    'jpg' => 'image/jpeg',
-    'gif' => 'image/gif'
-];
-
-// Verifica se é uma página HTML
-if ($metodo === 'GET') {
-    // Remove trailing slash
-    $uri = rtrim($uri, '/');
-    
-    // Mapeia URLs para arquivos HTML
-    $htmlFiles = [
-        '/' => '/index.html',
-        '/admin' => '/admin/adminpanel.html', // Alterado para usar adminpanel.html
-        '/coordenador' => '/coordenador/index.html',
-        '/login' => '/login.html'
-    ];
-    
-    if (isset($htmlFiles[$uri])) {
-        $arquivo = __DIR__ . $htmlFiles[$uri];
-        if (file_exists($arquivo)) {
-            header('Content-Type: text/html');
-            readfile($arquivo);
-            exit;
+        $contentType = $mimeTypes[$extensao] ?? 'text/plain';
+        header("Content-Type: $contentType; charset=UTF-8");
+        
+        // Remove o header JSON padrão para arquivos não-JSON
+        if ($contentType !== 'application/json') {
+            header_remove('Content-Type');
+            header("Content-Type: $contentType; charset=UTF-8");
         }
+
+        readfile($caminhoArquivo);
+        return true;
     }
+    return false;
 }
 
-// Verifica se é um arquivo estático
-$ext = pathinfo($uri, PATHINFO_EXTENSION);
-if ($ext && file_exists(__DIR__ . $uri)) {
-    // Força o tipo MIME correto para arquivos comuns
-    switch ($ext) {
-        case 'css':
-            header('Content-Type: text/css');
-            break;
-        case 'js':
-            header('Content-Type: application/javascript');
-            break;
-        case 'html':
-            header('Content-Type: text/html');
-            break;
-        default:
-            $contentType = $mimeTypes[$ext] ?? 'application/octet-stream';
-            header("Content-Type: $contentType");
-    }
-    readfile(__DIR__ . $uri);
-    exit;
+// Obtém a URI requisitada
+$requestUri = $_SERVER['REQUEST_URI'];
+$requestUri = strtok($requestUri, '?'); // Remove query string
+$requestUri = rtrim($requestUri, '/'); // Remove barra final
+if (empty($requestUri)) $requestUri = '/';
+
+// Tenta servir arquivo estático primeiro
+$caminhoArquivo = DIRETORIO_BASE . $requestUri;
+if ($requestUri === '/') {
+    $caminhoArquivo = DIRETORIO_BASE . '/index.html';
 }
 
-// Se for uma rota da API, remove o prefixo /api
-if (strpos($uri, '/api/') === 0) {
-    $uri = substr($uri, 4);
+if (servirArquivoEstatico($caminhoArquivo)) {
+    exit(0);
 }
-$uri = '/' . trim($uri, '/');
 
-// Define as rotas da API
+// Se não for arquivo estático, trata como requisição API
+$metodo = $_SERVER['REQUEST_METHOD'];
+$rotaChave = "$metodo:$requestUri";
+
+// Define as rotas disponíveis
 $rotas = [
-    // Rotas de autenticação
-    'POST:/auth/login' => 'api/auth/login.php',
-    'POST:/auth/logout' => 'api/auth/logout.php',
-    'GET:/auth/perfil' => 'api/auth/perfil.php',
-    'PUT:/auth/perfil' => 'api/auth/perfil.php',
-    
-    // Rotas de salas
-    'GET:/sala' => 'api/sala.php',
-    'POST:/sala' => 'api/sala.php',
-    'PUT:/sala' => 'api/sala.php',
-    'DELETE:/sala' => 'api/sala.php',
-    
-    // Rotas de turmas
-    'GET:/turma' => 'api/turma.php',
-    'POST:/turma' => 'api/turma.php',
-    'PUT:/turma' => 'api/turma.php',
-    'DELETE:/turma' => 'api/turma.php',
-    
-    // Rotas de reservas
-    'GET:/reserva' => 'api/reserva.php',
-    'POST:/reserva' => 'api/reserva.php',
-    'PUT:/reserva' => 'api/reserva.php',
-    'DELETE:/reserva' => 'api/reserva.php'
+    'GET:/sala' => DIRETORIO_API . '/sala.php',
+    'POST:/sala' => DIRETORIO_API . '/sala.php',
+    'PUT:/sala' => DIRETORIO_API . '/sala.php',
+    'DELETE:/sala' => DIRETORIO_API . '/sala.php',
+    'GET:/reserva' => DIRETORIO_API . '/reserva.php',
+    'POST:/reserva' => DIRETORIO_API . '/reserva.php',
+    'PUT:/reserva' => DIRETORIO_API . '/reserva.php',
+    'DELETE:/reserva' => DIRETORIO_API . '/reserva.php',
+    'POST:/auth/login' => DIRETORIO_API . '/auth/login.php',
+    'POST:/auth/logout' => DIRETORIO_API . '/auth/logout.php',
+    'GET:/auth/perfil' => DIRETORIO_API . '/auth/perfil.php',
+    'PUT:/auth/perfil' => DIRETORIO_API . '/auth/perfil.php'
 ];
 
-// Verifica se é uma rota da API
-$rotaChave = "{$metodo}:{$uri}";
-error_log("Procurando rota: $rotaChave");
-
+// Verifica se a rota existe
 if (isset($rotas[$rotaChave])) {
-    $arquivo = __DIR__ . '/' . $rotas[$rotaChave];
-    error_log("Arquivo a ser carregado: $arquivo");
-    
-    if (file_exists($arquivo)) {
-        error_log("Arquivo encontrado, carregando...");
-        require $arquivo;
-        exit;
-    }
+    require $rotas[$rotaChave];
+    exit(0);
 }
 
-// Se chegou aqui, retorna 404
-error_log("Nenhuma rota encontrada para: $rotaChave");
+// Se chegou aqui, a rota não foi encontrada
 http_response_code(404);
-header('Content-Type: application/json');
 echo json_encode([
     'sucesso' => false,
     'erro' => [
@@ -129,11 +109,11 @@ echo json_encode([
         'mensagem' => 'Rota não encontrada',
         'detalhes' => [
             'metodo' => $metodo,
-            'uri' => $uri,
-            'rotaBase' => $uri,
+            'uri' => $requestUri,
+            'rotaBase' => '/',
             'rotaChave' => $rotaChave,
-            'requestUri' => $_SERVER['REQUEST_URI'],
+            'requestUri' => $requestUri,
             'rotasDisponiveis' => array_keys($rotas)
         ]
     ]
-]);
+], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
