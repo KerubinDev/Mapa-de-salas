@@ -1,3 +1,30 @@
+# Define tipos MIME
+AddType application/javascript .js
+AddType application/json .json
+AddType text/css .css
+
+# Habilita CORS
+Header set Access-Control-Allow-Origin "*"
+Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+Header set Access-Control-Allow-Headers "Content-Type, Authorization"
+
+# Compressão Gzip
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html
+    AddOutputFilterByType DEFLATE text/css
+    AddOutputFilterByType DEFLATE application/javascript
+    AddOutputFilterByType DEFLATE application/json
+</IfModule>
+
+# Cache do navegador
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType application/javascript "access plus 1 month"
+    ExpiresByType text/css "access plus 1 month"
+    ExpiresByType image/png "access plus 1 month"
+    ExpiresByType image/jpeg "access plus 1 month"
+</IfModule>
+
 # Habilita o módulo de reescrita
 RewriteEngine On
 
@@ -21,25 +48,6 @@ Header set Access-Control-Allow-Headers "Content-Type, Authorization"
     Order Allow,Deny
     Deny from all
 </Files>
-
-# Compressão GZIP
-<IfModule mod_deflate.c>
-    AddOutputFilterByType DEFLATE text/plain
-    AddOutputFilterByType DEFLATE text/html
-    AddOutputFilterByType DEFLATE text/css
-    AddOutputFilterByType DEFLATE application/javascript
-    AddOutputFilterByType DEFLATE application/json
-</IfModule>
-
-# Cache para arquivos estáticos
-<FilesMatch "\.(ico|pdf|jpg|jpeg|png|gif|js|css|swf)$">
-    Header set Cache-Control "max-age=31536000, public"
-</FilesMatch>
-
-# Define tipos MIME corretos
-AddType application/javascript .js
-AddType application/manifest+json .webmanifest
-AddType application/json .json
 
 # Força HTTPS
 RewriteCond %{HTTPS} off

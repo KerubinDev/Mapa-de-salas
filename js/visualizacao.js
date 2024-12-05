@@ -31,7 +31,7 @@ class GerenciadorVisualizacao {
      */
     async _carregarSalas() {
         try {
-            const resposta = await fetch('/api/sala.php');
+            const resposta = await fetch('api/sala.php');
             if (!resposta.ok) throw new Error('Erro ao carregar salas');
             
             const salas = await resposta.json();
