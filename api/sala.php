@@ -70,13 +70,11 @@ class GerenciadorSala {
         ]);
         
         // Registra no log
-        $this->_db->insert('logs', [
-            'usuarioId' => $usuario['id'],
-            'acao' => 'sala_criar',
-            'detalhes' => "Sala criada: {$sala['nome']}",
-            'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
-            'userAgent' => $_SERVER['HTTP_USER_AGENT'] ?? ''
-        ]);
+        registrarLog(
+            $this->_usuario['id'],
+            'sala_criar',
+            "Sala criada: {$sala['nome']}"
+        );
         
         responderJson($sala, 201);
     }
@@ -110,13 +108,11 @@ class GerenciadorSala {
         $sala = $this->_db->update('salas', $id, $dados);
         
         // Registra no log
-        $this->_db->insert('logs', [
-            'usuarioId' => $usuario['id'],
-            'acao' => 'sala_atualizar',
-            'detalhes' => "Sala atualizada: {$sala['nome']}",
-            'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
-            'userAgent' => $_SERVER['HTTP_USER_AGENT'] ?? ''
-        ]);
+        registrarLog(
+            $this->_usuario['id'],
+            'sala_atualizar',
+            "Sala atualizada: {$sala['nome']}"
+        );
         
         responderJson($sala);
     }
@@ -143,13 +139,11 @@ class GerenciadorSala {
         }
         
         // Registra no log
-        $this->_db->insert('logs', [
-            'usuarioId' => $usuario['id'],
-            'acao' => 'sala_remover',
-            'detalhes' => "Sala removida: {$sala['nome']}",
-            'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
-            'userAgent' => $_SERVER['HTTP_USER_AGENT'] ?? ''
-        ]);
+        registrarLog(
+            $this->_usuario['id'],
+            'sala_remover',
+            "Sala removida: {$sala['nome']}"
+        );
         
         responderJson(['mensagem' => 'Sala removida com sucesso']);
     }
@@ -169,7 +163,7 @@ class GerenciadorSala {
 }
 
 // Roteamento
-$gerenciador = new GerenciadorSala();
+$gerenciador = new GerenciadorSala($usuario ?? null);
 $metodo = $_SERVER['REQUEST_METHOD'];
 $id = $_GET['id'] ?? null;
 
