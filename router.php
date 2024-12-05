@@ -14,8 +14,17 @@ error_log("Requisição recebida: " . $_SERVER['REQUEST_METHOD'] . " " . $_SERVE
 $metodo = $_SERVER['REQUEST_METHOD'];
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
+// Se for a raiz, serve o index.html
+if ($uri === '/' || $uri === '') {
+    if (file_exists(__DIR__ . '/index.html')) {
+        header('Content-Type: text/html');
+        readfile(__DIR__ . '/index.html');
+        exit;
+    }
+}
+
 // Remove o prefixo do path base se existir
-$uri = preg_replace('/^\/api/', '', $uri); // Remove /api do início
+$uri = preg_replace('/^\/api/', '', $uri);
 $uri = '/' . trim($uri, '/');
 
 error_log("URI processada: $uri");
@@ -28,24 +37,28 @@ $rotas = [
     'GET:/auth/perfil' => 'api/auth/perfil.php',
     'PUT:/auth/perfil' => 'api/auth/perfil.php',
     
-    // Rotas de salas
-    'GET:/sala' => 'api/sala.php',
-    'POST:/sala' => 'api/sala.php',
-    'PUT:/sala' => 'api/sala.php',
-    'DELETE:/sala' => 'api/sala.php',
-    
-    // Rotas de turmas
-    'GET:/turma' => 'api/turma.php',
-    'POST:/turma' => 'api/turma.php',
-    'PUT:/turma' => 'api/turma.php',
-    'DELETE:/turma' => 'api/turma.php',
-    
-    // Rotas de reservas
-    'GET:/reserva' => 'api/reserva.php',
-    'POST:/reserva' => 'api/reserva.php',
-    'PUT:/reserva' => 'api/reserva.php',
-    'DELETE:/reserva' => 'api/reserva.php'
+    // Outras rotas...
 ];
+
+// Mapeia extensões para tipos MIME
+$mimeTypes = [
+    'html' => 'text/html',
+    'css' => 'text/css',
+    'js' => 'application/javascript',
+    'json' => 'application/json',
+    'png' => 'image/png',
+    'jpg' => 'image/jpeg',
+    'gif' => 'image/gif'
+];
+
+// Verifica se é um arquivo estático
+$ext = pathinfo($uri, PATHINFO_EXTENSION);
+if ($ext && file_exists(__DIR__ . $uri)) {
+    $contentType = $mimeTypes[$ext] ?? 'application/octet-stream';
+    header("Content-Type: $contentType");
+    readfile(__DIR__ . $uri);
+    exit;
+}
 
 // Verifica se é uma rota da API
 $rotaChave = "{$metodo}:{$uri}";
@@ -59,8 +72,6 @@ if (isset($rotas[$rotaChave])) {
         error_log("Arquivo encontrado, carregando...");
         require $arquivo;
         exit;
-    } else {
-        error_log("Arquivo não encontrado: $arquivo");
     }
 }
 
@@ -77,8 +88,7 @@ echo json_encode([
             'metodo' => $metodo,
             'uri' => $uri,
             'rotaChave' => $rotaChave,
-            'requestUri' => $_SERVER['REQUEST_URI'],
-            'rotasDisponiveis' => array_keys($rotas)
+            'requestUri' => $_SERVER['REQUEST_URI']
         ]
     ]
 ]);
