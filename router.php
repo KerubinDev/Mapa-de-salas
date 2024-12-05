@@ -44,7 +44,6 @@ function servirArquivoEstatico($caminhoArquivo) {
         ];
 
         $contentType = $mimeTypes[$extensao] ?? 'text/plain';
-        header("Content-Type: $contentType; charset=UTF-8");
         
         // Remove o header JSON padrão para arquivos não-JSON
         if ($contentType !== 'application/json') {
@@ -76,7 +75,14 @@ if (servirArquivoEstatico($caminhoArquivo)) {
 
 // Se não for arquivo estático, trata como requisição API
 $metodo = $_SERVER['REQUEST_METHOD'];
-$rotaChave = "$metodo:$requestUri";
+
+// Remove o prefixo /api se existir
+$rotaUri = $requestUri;
+if (strpos($rotaUri, '/api') === 0) {
+    $rotaUri = substr($rotaUri, 4);
+}
+
+$rotaChave = "$metodo:$rotaUri";
 
 // Define as rotas disponíveis
 $rotas = [
@@ -110,9 +116,9 @@ echo json_encode([
         'detalhes' => [
             'metodo' => $metodo,
             'uri' => $requestUri,
+            'rotaUri' => $rotaUri,
             'rotaBase' => '/',
             'rotaChave' => $rotaChave,
-            'requestUri' => $requestUri,
             'rotasDisponiveis' => array_keys($rotas)
         ]
     ]
