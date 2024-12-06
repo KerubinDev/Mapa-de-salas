@@ -1,10 +1,15 @@
 /**
  * @fileoverview Gerenciamento do dashboard administrativo
- * @author Seu Nome
  */
 
 class GerenciadorDashboard {
     constructor() {
+        // Verifica se está autenticado
+        if (!window.authManager.isAuthenticated()) {
+            window.location.href = '/login.html';
+            return;
+        }
+
         this._nomeUsuario = document.getElementById('nomeUsuario');
         this._btnSair = document.getElementById('btnSair');
         this._totalSalas = document.getElementById('totalSalas');
@@ -12,7 +17,7 @@ class GerenciadorDashboard {
         this._totalUsuarios = document.getElementById('totalUsuarios');
 
         this._inicializarEventos();
-        this._verificarAutenticacao();
+        this._carregarPerfil();
         this._carregarDados();
     }
 
@@ -23,20 +28,13 @@ class GerenciadorDashboard {
     _inicializarEventos() {
         this._btnSair.addEventListener('click', async () => {
             try {
-                const token = localStorage.getItem('token');
-                
                 // Faz a requisição de logout
                 const resposta = await fetch('/api/auth/logout', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    }
+                    method: 'POST'
                 });
 
-                // Limpa os dados locais
-                localStorage.removeItem('token');
-                localStorage.removeItem('usuario');
+                // Limpa os dados de autenticação
+                window.authManager.clearAuth();
                 
                 // Redireciona para a página de login
                 window.location.href = '/login.html';
@@ -48,40 +46,22 @@ class GerenciadorDashboard {
     }
 
     /**
-     * Verifica se o usuário está autenticado
+     * Carrega os dados do perfil do usuário
      * @private
      */
-    async _verificarAutenticacao() {
+    async _carregarPerfil() {
         try {
             const resposta = await fetch('/api/auth/perfil');
             if (!resposta.ok) {
-                window.location.href = '/login.html';
-                return;
+                throw new Error('Erro ao carregar perfil');
             }
             
             const dados = await resposta.json();
             this._nomeUsuario.textContent = dados.nome;
         } catch (erro) {
-            console.error('Erro ao verificar autenticação:', erro);
+            console.error('Erro ao carregar perfil:', erro);
+            window.authManager.clearAuth();
             window.location.href = '/login.html';
-        }
-    }
-
-    /**
-     * Realiza o logout do usuário
-     * @private
-     */
-    async _realizarLogout() {
-        try {
-            const resposta = await fetch('/api/auth/logout', {
-                method: 'POST'
-            });
-            
-            if (resposta.ok) {
-                window.location.href = '/login.html';
-            }
-        } catch (erro) {
-            console.error('Erro ao realizar logout:', erro);
         }
     }
 
@@ -97,14 +77,20 @@ class GerenciadorDashboard {
                 fetch('/api/usuarios').then(r => r.json())
             ]);
 
-            this._totalSalas.textContent = salas.length;
-            this._totalReservas.textContent = reservas.length;
-            this._totalUsuarios.textContent = usuarios.length;
+            this._totalSalas.textContent = salas.length || 0;
+            this._totalReservas.textContent = reservas.length || 0;
+            this._totalUsuarios.textContent = usuarios.length || 0;
         } catch (erro) {
             console.error('Erro ao carregar dados:', erro);
+            // Mostra 0 em caso de erro
+            this._totalSalas.textContent = '0';
+            this._totalReservas.textContent = '0';
+            this._totalUsuarios.textContent = '0';
         }
     }
 }
 
 // Inicializa o gerenciador do dashboard
-const gerenciadorDashboard = new GerenciadorDashboard(); 
+document.addEventListener('DOMContentLoaded', () => {
+    const gerenciadorDashboard = new GerenciadorDashboard();
+}); 
