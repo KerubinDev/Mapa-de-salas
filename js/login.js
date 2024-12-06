@@ -32,32 +32,16 @@ class GerenciadorLogin {
                 throw new Error(dados.erro?.mensagem || 'Erro no login');
             }
 
-            // Salva o token e dados do usuário
-            localStorage.setItem('token', dados.dados.token);
+            // Configura o token no gerenciador de autenticação
+            window.authManager.setToken(dados.dados.token);
+            
+            // Salva os dados do usuário
             localStorage.setItem('usuario', JSON.stringify(dados.dados.usuario));
-
-            // Configura o token para requisições futuras
-            this._configurarHeadersAutenticacao(dados.dados.token);
 
             return dados.dados;
         } catch (erro) {
             console.error('Erro no login:', erro);
             throw erro;
-        }
-    }
-
-    /**
-     * Configura o header de autorização para todas as requisições futuras
-     * @private
-     */
-    _configurarHeadersAutenticacao(token) {
-        if (window.fetch) {
-            const originalFetch = window.fetch;
-            window.fetch = function(url, options = {}) {
-                options.headers = options.headers || {};
-                options.headers['Authorization'] = `Bearer ${token}`;
-                return originalFetch(url, options);
-            };
         }
     }
 
@@ -79,12 +63,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const gerenciador = new GerenciadorLogin();
     const form = document.querySelector('form');
     const mensagemErro = document.getElementById('mensagemErro');
-    
-    // Configura o token se já estiver logado
-    const token = localStorage.getItem('token');
-    if (token) {
-        gerenciador._configurarHeadersAutenticacao(token);
-    }
     
     form.addEventListener('submit', async (e) => {
         e.preventDefault();

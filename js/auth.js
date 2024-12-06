@@ -1,62 +1,56 @@
 /**
  * Gerenciador de Autenticação Global
  */
-class Auth {
+class AuthManager {
     constructor() {
-        this._usuario = JSON.parse(localStorage.getItem('usuario')) || 
-                       JSON.parse(sessionStorage.getItem('usuario'));
+        this.token = localStorage.getItem('token');
+        this.configureAuthHeaders();
     }
 
     /**
-     * Retorna os headers padrão para requisições autenticadas
+     * Configura os headers de autenticação para todas as requisições
      */
-    getHeaders() {
-        return {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this._usuario?.token || ''}`
-        };
+    configureAuthHeaders() {
+        if (window.fetch) {
+            const originalFetch = window.fetch;
+            window.fetch = (url, options = {}) => {
+                options.headers = options.headers || {};
+                if (this.token) {
+                    options.headers['Authorization'] = `Bearer ${this.token}`;
+                }
+                return originalFetch(url, options);
+            };
+        }
+    }
+
+    /**
+     * Atualiza o token de autenticação
+     */
+    setToken(token) {
+        this.token = token;
+        if (token) {
+            localStorage.setItem('token', token);
+        } else {
+            localStorage.removeItem('token');
+        }
+    }
+
+    /**
+     * Remove o token e dados do usuário
+     */
+    clearAuth() {
+        this.token = null;
+        localStorage.removeItem('token');
+        localStorage.removeItem('usuario');
     }
 
     /**
      * Verifica se o usuário está autenticado
      */
-    verificarAutenticacao() {
-        if (!this._usuario) {
-            window.location.href = '/login.html';
-            return false;
-        }
-        return true;
-    }
-
-    /**
-     * Retorna o usuário atual
-     */
-    getUsuario() {
-        return this._usuario;
-    }
-
-    /**
-     * Realiza o logout
-     */
-    async logout() {
-        try {
-            const resposta = await fetch('/api/auth/logout.php', {
-                method: 'POST'
-            });
-
-            if (!resposta.ok) {
-                throw new Error('Erro ao realizar logout');
-            }
-
-            localStorage.removeItem('usuario');
-            sessionStorage.removeItem('usuario');
-            window.location.href = '/login.html';
-        } catch (erro) {
-            console.error('Erro ao fazer logout:', erro);
-            alert('Erro ao realizar logout');
-        }
+    isAuthenticated() {
+        return !!this.token;
     }
 }
 
-// Instancia o gerenciador de autenticação globalmente
-window.auth = new Auth(); 
+// Cria uma instância global do gerenciador de autenticação
+window.authManager = new AuthManager(); 
