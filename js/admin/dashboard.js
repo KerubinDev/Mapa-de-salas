@@ -4,93 +4,62 @@
 
 class GerenciadorDashboard {
     constructor() {
-        // Verifica se está autenticado
-        if (!window.authManager.isAuthenticated()) {
-            window.location.href = '/login.html';
-            return;
-        }
-
-        this._nomeUsuario = document.getElementById('nomeUsuario');
-        this._btnSair = document.getElementById('btnSair');
-        this._totalSalas = document.getElementById('totalSalas');
-        this._totalReservas = document.getElementById('totalReservas');
-        this._totalUsuarios = document.getElementById('totalUsuarios');
-
-        this._inicializarEventos();
-        this._carregarPerfil();
-        this._carregarDados();
+        this._token = localStorage.getItem('token');
+        this._init();
     }
 
-    /**
-     * Inicializa os eventos da página
-     * @private
-     */
-    _inicializarEventos() {
-        this._btnSair.addEventListener('click', async () => {
-            try {
-                // Faz a requisição de logout
-                const resposta = await fetch('/api/auth/logout', {
-                    method: 'POST'
-                });
-
-                // Limpa os dados de autenticação
-                window.authManager.clearAuth();
-                
-                // Redireciona para a página de login
-                window.location.href = '/login.html';
-            } catch (erro) {
-                console.error('Erro ao fazer logout:', erro);
-                window.location.href = '/login.html';
-            }
-        });
-    }
-
-    /**
-     * Carrega os dados do perfil do usuário
-     * @private
-     */
-    async _carregarPerfil() {
+    async _init() {
         try {
-            const resposta = await fetch('/api/auth/perfil');
-            if (!resposta.ok) {
-                throw new Error('Erro ao carregar perfil');
-            }
-            
-            const dados = await resposta.json();
-            this._nomeUsuario.textContent = dados.nome;
+            await this._carregarResumos();
+            await this._carregarReservasRecentes();
+            this._configurarEventos();
         } catch (erro) {
-            console.error('Erro ao carregar perfil:', erro);
-            window.authManager.clearAuth();
-            window.location.href = '/login.html';
+            console.error('Erro ao inicializar dashboard:', erro);
         }
     }
 
-    /**
-     * Carrega os dados do dashboard
-     * @private
-     */
-    async _carregarDados() {
+    async _carregarResumos() {
         try {
-            const [salas, reservas, usuarios] = await Promise.all([
-                fetch('/api/sala').then(r => r.json()),
-                fetch('/api/reserva').then(r => r.json()),
-                fetch('/api/usuarios').then(r => r.json())
+            const [salas, reservas, turmas, usuarios] = await Promise.all([
+                this._buscarDados('/api/sala'),
+                this._buscarDados('/api/reserva'),
+                this._buscarDados('/api/turma'),
+                this._buscarDados('/api/usuario')
             ]);
 
-            this._totalSalas.textContent = salas.length || 0;
-            this._totalReservas.textContent = reservas.length || 0;
-            this._totalUsuarios.textContent = usuarios.length || 0;
+            document.getElementById('totalSalas').textContent = salas.length;
+            document.getElementById('totalReservas').textContent = reservas.length;
+            document.getElementById('totalTurmas').textContent = turmas.length;
+            document.getElementById('totalUsuarios').textContent = usuarios.length;
         } catch (erro) {
-            console.error('Erro ao carregar dados:', erro);
-            // Mostra 0 em caso de erro
-            this._totalSalas.textContent = '0';
-            this._totalReservas.textContent = '0';
-            this._totalUsuarios.textContent = '0';
+            console.error('Erro ao carregar resumos:', erro);
         }
+    }
+
+    async _buscarDados(url) {
+        const resposta = await fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${this._token}`
+            }
+        });
+
+        if (!resposta.ok) {
+            throw new Error(`Erro ao buscar dados de ${url}`);
+        }
+
+        const dados = await resposta.json();
+        return dados.dados || [];
+    }
+
+    _configurarEventos() {
+        document.getElementById('btnSair').addEventListener('click', () => {
+            localStorage.clear();
+            window.location.href = '/login';
+        });
     }
 }
 
-// Inicializa o gerenciador do dashboard
+// Inicializa o gerenciador quando a página carregar
 document.addEventListener('DOMContentLoaded', () => {
-    const gerenciadorDashboard = new GerenciadorDashboard();
+    new GerenciadorDashboard();
 }); 
