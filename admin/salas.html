@@ -3,132 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gerenciar Salas - Sistema de Gestão de Salas</title>
+    <title>Gestão de Salas - Sistema de Gestão</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="/js/temas.js"></script>
-    <script src="/js/login.js"></script>
-    <link rel="icon" href="data:,">
 </head>
-<body class="bg-background">
-    <!-- Cabeçalho -->
-    <header class="bg-primary text-white shadow-lg">
+<body class="bg-gray-100">
+    <header class="bg-blue-600 text-white shadow-lg">
         <nav class="container mx-auto px-4 py-4">
             <div class="flex justify-between items-center">
-                <h1 class="text-2xl font-bold">Gerenciar Salas</h1>
+                <h1 class="text-2xl font-bold">Gestão de Salas</h1>
                 <div class="space-x-4">
                     <a href="/admin" class="hover:underline">Dashboard</a>
-                    <a href="reservas.html" class="hover:underline">Reservas</a>
-                    <a href="configuracoes.html" class="hover:underline">Configurações</a>
-                    <button id="btnSair" 
-                            class="bg-white text-primary px-4 py-2 rounded-lg 
-                                   hover:bg-opacity-90 transition">
+                    <a href="/admin/reservas" class="hover:underline">Reservas</a>
+                    <a href="/admin/configuracoes" class="hover:underline">Configurações</a>
+                    <button id="btnSair" class="bg-white text-blue-600 px-4 py-2 rounded-lg">
                         Sair
                     </button>
                 </div>
             </div>
         </nav>
     </header>
-
-    <!-- Conteúdo Principal -->
     <main class="container mx-auto px-4 py-8">
-        <!-- Barra de Ações -->
-        <div class="flex justify-between items-center mb-6">
-            <div class="flex gap-4">
-                <input type="text" id="pesquisaSala" 
-                       placeholder="Pesquisar salas..."
-                       class="px-4 py-2 border rounded-lg w-64">
-                
-                <select id="filtroCapacidade" 
-                        class="px-4 py-2 border rounded-lg">
-                    <option value="">Todas as Capacidades</option>
-                    <option value="20">Até 20 pessoas</option>
-                    <option value="40">Até 40 pessoas</option>
-                    <option value="60">Até 60 pessoas</option>
-                </select>
-            </div>
-
-            <button id="btnNovaSala"
-                    class="bg-primary text-white px-4 py-2 rounded-lg
-                           hover:bg-opacity-90 transition">
-                Nova Sala
-            </button>
-        </div>
-
-        <!-- Lista de Salas -->
-        <div class="bg-white rounded-lg shadow overflow-hidden">
-            <table class="w-full">
-                <thead class="bg-gray-50">
-                    <tr>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                            Nome
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                            Capacidade
-                        </th>
-                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                            Descrição
-                        </th>
-                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
-                            Ações
-                        </th>
-                    </tr>
-                </thead>
-                <tbody id="listaSalas">
-                    <!-- Será preenchido via JavaScript -->
-                </tbody>
-            </table>
-        </div>
+        <h2 class="text-2xl font-bold mb-4">Gerenciamento de Salas</h2>
+        <!-- Conteúdo específico da página será adicionado depois -->
     </main>
-
-    <!-- Modal de Sala -->
-    <div id="modalSala" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 
-                               overflow-y-auto h-full w-full">
-        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md 
-                    bg-white">
-            <h3 class="text-lg font-bold mb-4" id="tituloModal">Nova Sala</h3>
-            <form id="formSala" class="space-y-4">
-                <input type="hidden" name="id">
-                
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">
-                        Nome da Sala
-                    </label>
-                    <input type="text" name="nome" required
-                           class="mt-1 block w-full px-3 py-2 border rounded-lg">
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">
-                        Capacidade
-                    </label>
-                    <input type="number" name="capacidade" required min="1"
-                           class="mt-1 block w-full px-3 py-2 border rounded-lg">
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700">
-                        Descrição
-                    </label>
-                    <textarea name="descricao" rows="3"
-                              class="mt-1 block w-full px-3 py-2 border rounded-lg"></textarea>
-                </div>
-
-                <div class="flex justify-end gap-2">
-                    <button type="button" onclick="gerenciadorSalas.fecharModal()"
-                            class="px-4 py-2 bg-gray-200 rounded-lg">
-                        Cancelar
-                    </button>
-                    <button type="submit" 
-                            class="px-4 py-2 bg-primary text-white rounded-lg">
-                        Salvar
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <script src="/js/temas.js"></script>
-    <script src="/js/login.js"></script>
     <script src="/js/admin/salas.js"></script>
 </body>
 </html> 

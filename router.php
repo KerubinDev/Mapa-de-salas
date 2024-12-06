@@ -1,131 +1,72 @@
 <?php
-/**
- * Router principal da aplicação
- * 
- * @author Seu Nome
- */
+require_once __DIR__ . '/config.php';
 
-// Define constantes
-define('DIRETORIO_BASE', __DIR__);
-define('DIRETORIO_API', __DIR__ . '/api');
-
-// Configura headers padrão
-header('Content-Type: application/json; charset=UTF-8');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type, Authorization');
-
-// Trata requisições OPTIONS (CORS)
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    exit(0);
-}
-
-/**
- * Serve um arquivo estático se ele existir
- * 
- * @param string $caminhoArquivo Caminho do arquivo requisitado
- * @return bool True se o arquivo foi servido, False caso contrário
- */
-function servirArquivoEstatico($caminhoArquivo) {
-    if (file_exists($caminhoArquivo) && is_file($caminhoArquivo)) {
-        // Define o tipo MIME baseado na extensão
-        $extensao = strtolower(pathinfo($caminhoArquivo, PATHINFO_EXTENSION));
-        $mimeTypes = [
-            'html' => 'text/html',
-            'css'  => 'text/css',
-            'js'   => 'application/javascript',
-            'json' => 'application/json',
-            'png'  => 'image/png',
-            'jpg'  => 'image/jpeg',
-            'jpeg' => 'image/jpeg',
-            'gif'  => 'image/gif',
-            'ico'  => 'image/x-icon',
-            'webmanifest' => 'application/manifest+json'
-        ];
-
-        $contentType = $mimeTypes[$extensao] ?? 'text/plain';
-        
-        // Remove todos os headers anteriores
-        header_remove();
-        
-        // Define o Content-Type apropriado
-        header("Content-Type: $contentType; charset=UTF-8");
-        
-        // Lê e envia o arquivo
-        readfile($caminhoArquivo);
-        return true;
+// Função para servir arquivos HTML
+function servirHtml($arquivo) {
+    if (file_exists($arquivo)) {
+        header('Content-Type: text/html; charset=utf-8');
+        readfile($arquivo);
+        exit;
     }
     return false;
 }
 
-// Obtém a URI requisitada
-$requestUri = $_SERVER['REQUEST_URI'];
-$requestUri = strtok($requestUri, '?'); // Remove query string
-$requestUri = rtrim($requestUri, '/'); // Remove barra final
-if (empty($requestUri)) $requestUri = '/';
-
-// Tenta servir arquivo estático primeiro
-$caminhoArquivo = DIRETORIO_BASE . $requestUri;
-if ($requestUri === '/') {
-    $caminhoArquivo = DIRETORIO_BASE . '/index.html';
-}
-
-if (servirArquivoEstatico($caminhoArquivo)) {
-    exit(0);
-}
-
-// Se não for arquivo estático, trata como requisição API
-$metodo = $_SERVER['REQUEST_METHOD'];
-
-// Remove o prefixo /api se existir
-$rotaUri = $requestUri;
-if (strpos($rotaUri, '/api') === 0) {
-    $rotaUri = substr($rotaUri, 4);
-}
-
-$rotaChave = "$metodo:$rotaUri";
-
-// Define as rotas disponíveis
-$rotas = [
-    // Rotas da API (mantém o Content-Type: application/json)
-    'GET:/sala' => DIRETORIO_API . '/sala.php',
-    'POST:/sala' => DIRETORIO_API . '/sala.php',
-    'PUT:/sala' => DIRETORIO_API . '/sala.php',
-    'DELETE:/sala' => DIRETORIO_API . '/sala.php',
-    'GET:/reserva' => DIRETORIO_API . '/reserva.php',
-    'POST:/reserva' => DIRETORIO_API . '/reserva.php',
-    'PUT:/reserva' => DIRETORIO_API . '/reserva.php',
-    'DELETE:/reserva' => DIRETORIO_API . '/reserva.php',
-    'POST:/auth/login' => DIRETORIO_API . '/auth/login.php',
-    'POST:/auth/logout' => DIRETORIO_API . '/auth/logout.php',
-    'GET:/auth/perfil' => DIRETORIO_API . '/auth/perfil.php',
-    'PUT:/auth/perfil' => DIRETORIO_API . '/auth/perfil.php',
-    
-    // Rotas de páginas (serão tratadas como arquivos estáticos)
-    'GET:/admin' => DIRETORIO_BASE . '/admin/adminpanel.html',
-    'GET:/admin/salas' => DIRETORIO_BASE . '/admin/salas.html',
-    'GET:/admin/reservas' => DIRETORIO_BASE . '/admin/reservas.html',
-    'GET:/admin/usuarios' => DIRETORIO_BASE . '/admin/usuarios.html',
-    'GET:/admin/configuracoes' => DIRETORIO_BASE . '/admin/configuracoes.html'
+// Mapeia rotas administrativas para arquivos HTML
+$rotasAdmin = [
+    '/admin' => 'admin/adminpanel.html',
+    '/admin/salas' => 'admin/salas.html',
+    '/admin/reservas' => 'admin/reservas.html',
+    '/admin/usuarios' => 'admin/usuarios.html',
+    '/admin/configuracoes' => 'admin/configuracoes.html',
+    '/login' => 'login.html'
 ];
 
-// Verifica se a rota existe
-if (isset($rotas[$rotaChave])) {
-    $arquivoRota = $rotas[$rotaChave];
-    
-    // Se for um arquivo HTML, serve como arquivo estático
-    if (pathinfo($arquivoRota, PATHINFO_EXTENSION) === 'html') {
-        if (servirArquivoEstatico($arquivoRota)) {
-            exit(0);
-        }
-    } else {
-        // Se não for HTML, assume que é um arquivo PHP da API
-        require $arquivoRota;
-        exit(0);
+$uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+
+// Remove .html se presente na URI
+$uri = preg_replace('/\.html$/', '', $uri);
+
+// Verifica se é uma rota administrativa
+if (isset($rotasAdmin[$uri])) {
+    if (servirHtml($rotasAdmin[$uri])) {
+        exit;
     }
 }
 
-// Se chegou aqui, a rota não foi encontrada
+// Se não for uma rota administrativa, trata como API
+if (preg_match('/^\/api\//', $uri)) {
+    require_once __DIR__ . '/api/rotas.php';
+    exit;
+}
+
+// Se chegou aqui, tenta servir um arquivo estático
+$arquivoFisico = __DIR__ . $uri;
+if (file_exists($arquivoFisico) && !is_dir($arquivoFisico)) {
+    $ext = pathinfo($arquivoFisico, PATHINFO_EXTENSION);
+    switch ($ext) {
+        case 'js':
+            header('Content-Type: application/javascript');
+            break;
+        case 'css':
+            header('Content-Type: text/css');
+            break;
+        case 'json':
+            header('Content-Type: application/json');
+            break;
+        case 'png':
+            header('Content-Type: image/png');
+            break;
+        case 'jpg':
+        case 'jpeg':
+            header('Content-Type: image/jpeg');
+            break;
+    }
+    readfile($arquivoFisico);
+    exit;
+}
+
+// Se nenhuma rota foi encontrada, retorna 404
+header('Content-Type: application/json');
 http_response_code(404);
 echo json_encode([
     'sucesso' => false,
@@ -133,12 +74,25 @@ echo json_encode([
         'codigo' => 404,
         'mensagem' => 'Rota não encontrada',
         'detalhes' => [
-            'metodo' => $metodo,
-            'uri' => $requestUri,
-            'rotaUri' => $rotaUri,
-            'rotaBase' => '/',
-            'rotaChave' => $rotaChave,
-            'rotasDisponiveis' => array_keys($rotas)
+            'metodo' => $_SERVER['REQUEST_METHOD'],
+            'uri' => $uri,
+            'rotasDisponiveis' => array_merge(
+                array_keys($rotasAdmin),
+                [
+                    'GET:/sala',
+                    'POST:/sala',
+                    'PUT:/sala',
+                    'DELETE:/sala',
+                    'GET:/reserva',
+                    'POST:/reserva',
+                    'PUT:/reserva',
+                    'DELETE:/reserva',
+                    'POST:/auth/login',
+                    'POST:/auth/logout',
+                    'GET:/auth/perfil',
+                    'PUT:/auth/perfil'
+                ]
+            )
         ]
     ]
-], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+]);
