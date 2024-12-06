@@ -1,19 +1,28 @@
 <?php
 require_once __DIR__ . '/../../config.php';
 
-// Log de debug
-error_log("=== DEBUG PERFIL ===");
-error_log("Headers: " . json_encode(getallheaders()));
-error_log("Método: " . $_SERVER['REQUEST_METHOD']);
+// Log detalhado de todos os headers
+error_log("=== DEBUG PERFIL DETALHADO ===");
+$headers = getallheaders();
+foreach ($headers as $name => $value) {
+    error_log("$name: $value");
+}
+
+// Log específico do Authorization
+$authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+error_log("Authorization header bruto: " . $authHeader);
+
+// Verifica CORS e preflight
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    header('Access-Control-Allow-Origin: *');
+    header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization');
+    exit(0);
+}
 
 // Verifica o token
-$headers = getallheaders();
-$authHeader = $headers['Authorization'] ?? '';
-
-error_log("Header de autorização: " . $authHeader);
-
 if (!preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
-    error_log("Token não encontrado no header");
+    error_log("Token não encontrado no header. Headers completos: " . json_encode($headers));
     responderErro('Token não fornecido', 401);
 }
 

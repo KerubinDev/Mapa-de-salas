@@ -69,28 +69,45 @@ class GerenciadorAdmin {
         console.log('Testando autenticação...');
         
         const token = localStorage.getItem('token');
-        console.log('Token atual:', token);
+        console.log('Token para teste:', token);
 
-        const resposta = await fetch('/api/auth/perfil', {
-            method: 'GET',
-            headers: {
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', '/api/auth/perfil');
+            
+            // Adiciona headers
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+            xhr.setRequestHeader('Cache-Control', 'no-cache');
+            
+            // Log dos headers
+            console.log('Headers enviados:', {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`,
                 'Cache-Control': 'no-cache'
-            }
+            });
+
+            xhr.onload = function() {
+                console.log('Resposta XHR:', {
+                    status: xhr.status,
+                    response: xhr.responseText,
+                    headers: xhr.getAllResponseHeaders()
+                });
+
+                if (xhr.status === 200) {
+                    resolve(JSON.parse(xhr.responseText));
+                } else {
+                    reject(new Error('Falha na autenticação'));
+                }
+            };
+
+            xhr.onerror = function() {
+                console.error('Erro na requisição XHR:', xhr.statusText);
+                reject(new Error('Erro na requisição'));
+            };
+
+            xhr.send();
         });
-
-        console.log('Resposta do teste:', {
-            status: resposta.status,
-            headers: Object.fromEntries(resposta.headers)
-        });
-
-        if (!resposta.ok) {
-            throw new Error('Falha na autenticação');
-        }
-
-        const dados = await resposta.json();
-        console.log('Perfil autenticado:', dados);
     }
 
     redirecionarParaLogin() {

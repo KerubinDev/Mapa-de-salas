@@ -33,15 +33,33 @@
 <body class="bg-background">
     <script>
         // Debug inicial
-        console.log('=== DEBUG INICIAL ===');
-        console.log('Token:', localStorage.getItem('token'));
-        console.log('Usuário:', localStorage.getItem('usuario'));
-        
-        // Verifica se há dados de autenticação
-        if (!localStorage.getItem('token') || !localStorage.getItem('usuario')) {
-            console.error('Dados de autenticação ausentes');
-            window.location.href = '/login.html';
-        }
+        (function() {
+            console.log('=== DEBUG INICIAL ===');
+            const token = localStorage.getItem('token');
+            const usuario = localStorage.getItem('usuario');
+            
+            console.log('Token presente:', !!token);
+            console.log('Usuário presente:', !!usuario);
+            
+            if (token) {
+                console.log('Token:', token.substring(0, 10) + '...');
+            }
+            
+            if (usuario) {
+                console.log('Usuário:', JSON.parse(usuario));
+            }
+            
+            // Teste de requisição manual
+            fetch('/api/auth/perfil', {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            }).then(r => r.json())
+              .then(data => console.log('Teste manual:', data))
+              .catch(err => console.error('Erro no teste manual:', err));
+            
+        })();
     </script>
     <!-- Cabeçalho -->
     <header class="bg-primary text-white shadow-lg">
