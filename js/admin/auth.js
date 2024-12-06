@@ -1,6 +1,6 @@
 class GerenciadorAdmin {
     constructor() {
-        console.log('Iniciando verificação de autenticação...');
+        console.log('Iniciando GerenciadorAdmin...');
         this.verificarAutenticacao();
     }
 
@@ -8,82 +8,69 @@ class GerenciadorAdmin {
         const token = localStorage.getItem('token');
         const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
 
-        console.log('Dados de autenticação:', {
+        console.log('Verificando autenticação:', {
             temToken: !!token,
-            token: token,
-            usuario: usuario,
-            pathname: window.location.pathname
+            temUsuario: !!usuario.id
         });
 
-        // Se não houver token ou usuário, redireciona para login
-        if (!token || !usuario) {
+        if (!token || !usuario.id) {
             console.error('Token ou usuário não encontrado');
             this.redirecionarParaLogin();
             return;
         }
 
-        // Verifica se o usuário é admin
-        if (usuario.tipo !== 'admin') {
-            console.error('Usuário não é admin:', usuario.tipo);
-            this.redirecionarParaLogin();
-            return;
-        }
-
-        console.log('Usuário autenticado com sucesso:', {
-            id: usuario.id,
-            tipo: usuario.tipo,
-            email: usuario.email
-        });
-
-        // Configura o header de autorização para todas as requisições
-        this._configurarHeadersAutenticacao(token);
-
-        // Teste de autenticação
+        // Configura o interceptador de requisições
+        this._configurarInterceptador(token);
+        
+        // Testa a autenticação
         this._testarAutenticacao();
+    }
+
+    _configurarInterceptador(token) {
+        const originalFetch = window.fetch;
+        window.fetch = function(url, options = {}) {
+            // Garante que options.headers existe
+            options.headers = options.headers || {};
+            
+            // Adiciona o token em todas as requisições
+            options.headers['Authorization'] = `Bearer ${token}`;
+            
+            console.log('Interceptando requisição:', {
+                url: url,
+                method: options.method || 'GET',
+                headers: options.headers
+            });
+
+            return originalFetch(url, options);
+        };
     }
 
     async _testarAutenticacao() {
         try {
-            console.log('Testando autenticação com o servidor...');
+            console.log('Testando autenticação...');
             const resposta = await fetch('/api/auth/perfil', {
                 method: 'GET',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-cache'
                 }
             });
 
-            console.log('Resposta do teste de autenticação:', {
+            console.log('Resposta do teste:', {
                 status: resposta.status,
-                headers: Object.fromEntries(resposta.headers.entries())
+                headers: Object.fromEntries(resposta.headers)
             });
-
-            const dados = await resposta.json();
-            console.log('Dados do perfil:', dados);
 
             if (!resposta.ok) {
                 throw new Error('Falha na autenticação');
             }
+
+            const dados = await resposta.json();
+            console.log('Perfil autenticado:', dados);
+
         } catch (erro) {
             console.error('Erro no teste de autenticação:', erro);
             this.redirecionarParaLogin();
-        }
-    }
-
-    _configurarHeadersAutenticacao(token) {
-        console.log('Configurando headers de autenticação');
-        if (window.fetch) {
-            const originalFetch = window.fetch;
-            window.fetch = function(url, options = {}) {
-                console.log('Requisição interceptada:', {
-                    url: url,
-                    method: options.method || 'GET',
-                    headers: options.headers
-                });
-
-                options.headers = options.headers || {};
-                options.headers['Authorization'] = `Bearer ${token}`;
-                return originalFetch(url, options);
-            };
         }
     }
 
@@ -95,8 +82,8 @@ class GerenciadorAdmin {
     }
 }
 
-// Inicializa o gerenciador
+// Inicializa o gerenciador quando a página carregar
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Página carregada, iniciando gerenciador...');
-    const gerenciador = new GerenciadorAdmin();
+    window.gerenciadorAdmin = new GerenciadorAdmin();
 }); 

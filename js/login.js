@@ -20,66 +20,39 @@ class GerenciadorLogin {
      */
     async realizarLogin(email, senha) {
         try {
-            // Validação básica dos inputs
-            if (!email || !senha) {
-                throw new Error('Email e senha são obrigatórios');
-            }
-
-            // Gera o hash da senha localmente para comparação
-            const hashLocal = await this._gerarHash(senha);
-            console.log('DEBUG - Comparação de hashes:', {
-                hashGerado: hashLocal,
-                hashEsperado: '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9',
-                senhaDigitada: senha,
-                email: email
-            });
-
-            const dadosRequisicao = {
-                email: email.trim(),
-                senha: senha,
-                hashSenha: hashLocal,  // Envia o hash também para debug
-                timestamp: new Date().getTime()
-            };
-
-            const resposta = await fetch(this.apiUrl, {
+            const resposta = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
+                    'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(dadosRequisicao),
-                credentials: 'include'
+                body: JSON.stringify({
+                    email: email,
+                    senha: senha
+                })
             });
 
             const dados = await resposta.json();
-
-            // Log detalhado da resposta
-            console.log('DEBUG - Resposta completa:', {
-                status: resposta.status,
-                dados: dados,
-                headers: Object.fromEntries(resposta.headers.entries())
-            });
+            console.log('Resposta do login:', dados);
 
             if (!resposta.ok || !dados.sucesso) {
-                throw new Error(dados.erro?.mensagem || this.MENSAGENS.SENHA_INCORRETA);
+                throw new Error(dados.erro?.mensagem || 'Erro no login');
             }
 
             // Armazena o token e dados do usuário
-            localStorage.setItem('token', dados.dados.token);
+            const token = dados.dados.token;
+            localStorage.setItem('token', token);
             localStorage.setItem('usuario', JSON.stringify(dados.dados.usuario));
-            
-            // Configura o token para todas as requisições futuras
-            this._configurarHeadersAutenticacao(dados.dados.token);
 
-            return dados.dados;
+            console.log('Login bem-sucedido:', {
+                token: token,
+                usuario: dados.dados.usuario
+            });
+
+            // Redireciona para o painel admin
+            window.location.href = '/admin';
 
         } catch (erro) {
-            console.error('Erro detalhado:', {
-                mensagem: erro.message,
-                tipo: erro.name,
-                stack: erro.stack,
-                timestamp: new Date().toISOString()
-            });
+            console.error('Erro no login:', erro);
             throw erro;
         }
     }
