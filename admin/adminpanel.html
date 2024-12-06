@@ -70,9 +70,9 @@
             <div class="flex justify-between items-center">
                 <h1 class="text-2xl font-bold">Painel Administrativo</h1>
                 <div class="space-x-4">
-                    <a href="salas.html" class="hover:underline">Salas</a>
-                    <a href="reservas.html" class="hover:underline">Reservas</a>
-                    <a href="configuracoes.html" class="hover:underline">Configurações</a>
+                    <a href="/admin/salas" class="hover:underline">Salas</a>
+                    <a href="/admin/reservas" class="hover:underline">Reservas</a>
+                    <a href="/admin/configuracoes" class="hover:underline">Configurações</a>
                     <button id="btnSair" 
                             class="bg-white text-primary px-4 py-2 rounded-lg 
                                    hover:bg-opacity-90 transition">
@@ -153,29 +153,17 @@
             <div class="bg-white p-6 rounded-lg shadow">
                 <h3 class="text-lg font-bold mb-4">Ações Rápidas</h3>
                 <div class="grid grid-cols-2 gap-4">
-                    <button onclick="window.location.href='salas.html'"
+                    <button onclick="window.location.href='/admin/salas'"
                             class="p-4 border-2 border-gray-200 rounded-lg hover:border-primary
                                    transition flex flex-col items-center gap-2">
                         <i class="fas fa-plus-circle text-2xl text-primary"></i>
                         <span>Nova Sala</span>
                     </button>
-                    <button onclick="window.location.href='reservas.html'"
+                    <button onclick="window.location.href='/admin/reservas'"
                             class="p-4 border-2 border-gray-200 rounded-lg hover:border-primary
                                    transition flex flex-col items-center gap-2">
                         <i class="fas fa-calendar-plus text-2xl text-primary"></i>
                         <span>Nova Reserva</span>
-                    </button>
-                    <button onclick="window.location.href='configuracoes.html'"
-                            class="p-4 border-2 border-gray-200 rounded-lg hover:border-primary
-                                   transition flex flex-col items-center gap-2">
-                        <i class="fas fa-cog text-2xl text-primary"></i>
-                        <span>Configurações</span>
-                    </button>
-                    <button onclick="window.location.href='/'"
-                            class="p-4 border-2 border-gray-200 rounded-lg hover:border-primary
-                                   transition flex flex-col items-center gap-2">
-                        <i class="fas fa-eye text-2xl text-primary"></i>
-                        <span>Ver Quadro</span>
                     </button>
                 </div>
             </div>

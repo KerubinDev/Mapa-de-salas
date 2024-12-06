@@ -1,4 +1,29 @@
 <?php
+require_once __DIR__ . '/config.php';
+
+// Rotas para arquivos HTML
+$rotasHtml = [
+    '/admin' => __DIR__ . '/admin/adminpanel.html',
+    '/admin/salas' => __DIR__ . '/admin/salas.html', 
+    '/admin/reservas' => __DIR__ . '/admin/reservas.html',
+    '/admin/configuracoes' => __DIR__ . '/admin/configuracoes.html',
+    '/login' => __DIR__ . '/login.html'
+];
+
+$uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+
+// Verifica se é uma rota HTML
+if (isset($rotasHtml[$uri])) {
+    if (file_exists($rotasHtml[$uri])) {
+        header('Content-Type: text/html');
+        readfile($rotasHtml[$uri]);
+        exit;
+    }
+}
+
+// Se não for uma rota HTML, continua com o roteamento da API
+require_once __DIR__ . '/api/rotas.php';
+
 require_once 'includes/seo.php';
 
 $seo = [
@@ -38,4 +63,4 @@ $seo = [
     }
     </script>
 </head>
-<!-- ... resto do código ... --> 
+<!-- ... resto do código ... -->
