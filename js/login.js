@@ -20,6 +20,8 @@ class GerenciadorLogin {
      */
     async realizarLogin(email, senha) {
         try {
+            console.log('Iniciando login...');
+            
             const resposta = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: {
@@ -40,13 +42,23 @@ class GerenciadorLogin {
 
             // Armazena o token e dados do usuário
             const token = dados.dados.token;
+            
+            // Verifica se o token existe
+            if (!token) {
+                throw new Error('Token não recebido do servidor');
+            }
+
+            // Salva no localStorage
             localStorage.setItem('token', token);
             localStorage.setItem('usuario', JSON.stringify(dados.dados.usuario));
 
-            console.log('Login bem-sucedido:', {
-                token: token,
-                usuario: dados.dados.usuario
+            console.log('Dados salvos:', {
+                token: localStorage.getItem('token'),
+                usuario: localStorage.getItem('usuario')
             });
+
+            // Aguarda um momento para garantir que os dados foram salvos
+            await new Promise(resolve => setTimeout(resolve, 100));
 
             // Redireciona para o painel admin
             window.location.href = '/admin';

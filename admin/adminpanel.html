@@ -31,6 +31,18 @@
     <link rel="icon" href="data:,">
 </head>
 <body class="bg-background">
+    <script>
+        // Debug inicial
+        console.log('=== DEBUG INICIAL ===');
+        console.log('Token:', localStorage.getItem('token'));
+        console.log('Usuário:', localStorage.getItem('usuario'));
+        
+        // Verifica se há dados de autenticação
+        if (!localStorage.getItem('token') || !localStorage.getItem('usuario')) {
+            console.error('Dados de autenticação ausentes');
+            window.location.href = '/login.html';
+        }
+    </script>
     <!-- Cabeçalho -->
     <header class="bg-primary text-white shadow-lg">
         <nav class="container mx-auto px-4 py-4">

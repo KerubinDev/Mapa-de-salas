@@ -1,88 +1,106 @@
 class GerenciadorAdmin {
     constructor() {
         console.log('Iniciando GerenciadorAdmin...');
-        this.verificarAutenticacao();
+        this._init();
     }
 
-    verificarAutenticacao() {
-        const token = localStorage.getItem('token');
-        const usuario = JSON.parse(localStorage.getItem('usuario') || '{}');
+    async _init() {
+        try {
+            await this.verificarAutenticacao();
+        } catch (erro) {
+            console.error('Erro na inicialização:', erro);
+            this.redirecionarParaLogin();
+        }
+    }
 
-        console.log('Verificando autenticação:', {
-            temToken: !!token,
-            temUsuario: !!usuario.id
+    async verificarAutenticacao() {
+        const token = localStorage.getItem('token');
+        const usuarioStr = localStorage.getItem('usuario');
+
+        console.log('Dados de autenticação:', {
+            token: token ? 'presente' : 'ausente',
+            usuario: usuarioStr ? 'presente' : 'ausente'
         });
 
-        if (!token || !usuario.id) {
-            console.error('Token ou usuário não encontrado');
-            this.redirecionarParaLogin();
-            return;
+        if (!token || !usuarioStr) {
+            throw new Error('Dados de autenticação não encontrados');
         }
 
-        // Configura o interceptador de requisições
+        // Configura o interceptador global
         this._configurarInterceptador(token);
-        
+
         // Testa a autenticação
-        this._testarAutenticacao();
+        await this._testarAutenticacao();
     }
 
     _configurarInterceptador(token) {
+        if (!token) {
+            console.error('Tentativa de configurar interceptador sem token');
+            return;
+        }
+
+        console.log('Configurando interceptador com token');
+        
+        const self = this;
         const originalFetch = window.fetch;
+        
         window.fetch = function(url, options = {}) {
-            // Garante que options.headers existe
             options.headers = options.headers || {};
-            
-            // Adiciona o token em todas as requisições
             options.headers['Authorization'] = `Bearer ${token}`;
             
-            console.log('Interceptando requisição:', {
-                url: url,
+            console.log('Requisição interceptada:', {
+                url,
                 method: options.method || 'GET',
                 headers: options.headers
             });
 
-            return originalFetch(url, options);
+            return originalFetch(url, options)
+                .then(async response => {
+                    if (response.status === 401) {
+                        console.error('Erro de autenticação na requisição');
+                        self.redirecionarParaLogin();
+                    }
+                    return response;
+                });
         };
     }
 
     async _testarAutenticacao() {
-        try {
-            console.log('Testando autenticação...');
-            const resposta = await fetch('/api/auth/perfil', {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Cache-Control': 'no-cache'
-                }
-            });
+        console.log('Testando autenticação...');
+        
+        const token = localStorage.getItem('token');
+        console.log('Token atual:', token);
 
-            console.log('Resposta do teste:', {
-                status: resposta.status,
-                headers: Object.fromEntries(resposta.headers)
-            });
-
-            if (!resposta.ok) {
-                throw new Error('Falha na autenticação');
+        const resposta = await fetch('/api/auth/perfil', {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+                'Cache-Control': 'no-cache'
             }
+        });
 
-            const dados = await resposta.json();
-            console.log('Perfil autenticado:', dados);
+        console.log('Resposta do teste:', {
+            status: resposta.status,
+            headers: Object.fromEntries(resposta.headers)
+        });
 
-        } catch (erro) {
-            console.error('Erro no teste de autenticação:', erro);
-            this.redirecionarParaLogin();
+        if (!resposta.ok) {
+            throw new Error('Falha na autenticação');
         }
+
+        const dados = await resposta.json();
+        console.log('Perfil autenticado:', dados);
     }
 
     redirecionarParaLogin() {
         console.log('Redirecionando para login...');
-        localStorage.removeItem('token');
-        localStorage.removeItem('usuario');
+        localStorage.clear();
         window.location.href = '/login.html';
     }
 }
 
-// Inicializa o gerenciador quando a página carregar
+// Inicializa o gerenciador
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Página carregada, iniciando gerenciador...');
     window.gerenciadorAdmin = new GerenciadorAdmin();
