@@ -1,28 +1,15 @@
 <?php
 require_once __DIR__ . '/../../config.php';
 
-// Log detalhado de todos os headers
+// Log detalhado
 error_log("=== DEBUG PERFIL DETALHADO ===");
 $headers = getallheaders();
-foreach ($headers as $name => $value) {
-    error_log("$name: $value");
-}
+$authHeader = $headers['Authorization'] ?? '';
+error_log("Authorization header: " . $authHeader);
 
-// Log específico do Authorization
-$authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
-error_log("Authorization header bruto: " . $authHeader);
-
-// Verifica CORS e preflight
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    header('Access-Control-Allow-Origin: *');
-    header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type, Authorization');
-    exit(0);
-}
-
-// Verifica o token
+// Extrai o token
 if (!preg_match('/Bearer\s+(.*)$/i', $authHeader, $matches)) {
-    error_log("Token não encontrado no header. Headers completos: " . json_encode($headers));
+    error_log("Token não encontrado no header");
     responderErro('Token não fornecido', 401);
 }
 
@@ -33,7 +20,19 @@ error_log("Token extraído: " . $token);
 $db = json_decode(file_get_contents(DB_FILE), true);
 $usuarios = $db['usuarios'] ?? [];
 
-// Busca o usuário pelo token
+error_log("Total de usuários no banco: " . count($usuarios));
+error_log("Procurando token: " . $token);
+
+// Debug de todos os usuários
+foreach ($usuarios as $index => $u) {
+    error_log("Usuário $index: " . json_encode([
+        'id' => $u['id'],
+        'token' => $u['token'] ?? 'sem token',
+        'email' => $u['email']
+    ]));
+}
+
+// Busca o usuário
 $usuario = null;
 foreach ($usuarios as $u) {
     if (($u['token'] ?? '') === $token) {
@@ -43,7 +42,7 @@ foreach ($usuarios as $u) {
 }
 
 if (!$usuario) {
-    error_log("Usuário não encontrado para o token");
+    error_log("Usuário não encontrado para o token: $token");
     responderErro('Token inválido', 401);
 }
 
