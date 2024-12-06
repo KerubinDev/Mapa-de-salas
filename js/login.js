@@ -48,6 +48,17 @@ class GerenciadorLogin {
             localStorage.setItem('token', dados.dados.token);
             localStorage.setItem('usuario', JSON.stringify(dados.dados.usuario));
 
+            // Aguarda um momento para garantir que os dados foram salvos
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            // Verifica se os dados foram salvos corretamente
+            const tokenSalvo = localStorage.getItem('token');
+            const usuarioSalvo = localStorage.getItem('usuario');
+
+            if (!tokenSalvo || !usuarioSalvo) {
+                throw new Error('Erro ao salvar dados de autenticação');
+            }
+
             console.log('Login bem-sucedido, redirecionando...');
             window.location.href = '/admin';
 

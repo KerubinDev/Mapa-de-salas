@@ -41,12 +41,10 @@
             console.log('Token presente:', !!token);
             console.log('Usuário presente:', !!usuario);
             
-            if (token) {
-                console.log('Token:', token.substring(0, 10) + '...');
-            }
-            
-            if (usuario) {
-                console.log('Usuário:', JSON.parse(usuario));
+            if (!token || !usuario) {
+                console.error('Dados de autenticação ausentes');
+                window.location.href = '/login.html';
+                return;
             }
             
             // Teste de requisição manual
@@ -55,10 +53,15 @@
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 }
-            }).then(r => r.json())
-              .then(data => console.log('Teste manual:', data))
-              .catch(err => console.error('Erro no teste manual:', err));
-            
+            }).then(r => {
+                if (!r.ok) throw new Error('Erro na verificação de perfil');
+                return r.json();
+            }).then(data => {
+                console.log('Perfil verificado:', data);
+            }).catch(err => {
+                console.error('Erro na verificação:', err);
+                window.location.href = '/login.html';
+            });
         })();
     </script>
     <!-- Cabeçalho -->
