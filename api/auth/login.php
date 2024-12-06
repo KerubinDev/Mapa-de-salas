@@ -36,7 +36,11 @@ if (!$usuario) {
 }
 
 // Verifica a senha
+error_log("Senha recebida (hash): " . $dados['senha']);
+error_log("Senha no banco: " . $usuario['senha']);
+
 if ($usuario['senha'] !== $dados['senha']) {
+    error_log("Senha incorreta para o usuário: " . $usuario['email']);
     responderErro('Senha incorreta', 401);
 }
 

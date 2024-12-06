@@ -22,6 +22,10 @@ class GerenciadorLogin {
         try {
             console.log('Iniciando login...');
             
+            // Converte a senha para SHA-256
+            const senhaHash = await this._gerarHashSenha(senha);
+            console.log('Hash gerado para a senha');
+
             const resposta = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: {
@@ -29,7 +33,7 @@ class GerenciadorLogin {
                 },
                 body: JSON.stringify({
                     email: email,
-                    senha: senha
+                    senha: senhaHash
                 })
             });
 
@@ -41,26 +45,10 @@ class GerenciadorLogin {
             }
 
             // Armazena o token e dados do usuário
-            const token = dados.dados.token;
-            
-            // Verifica se o token existe
-            if (!token) {
-                throw new Error('Token não recebido do servidor');
-            }
-
-            // Salva no localStorage
-            localStorage.setItem('token', token);
+            localStorage.setItem('token', dados.dados.token);
             localStorage.setItem('usuario', JSON.stringify(dados.dados.usuario));
 
-            console.log('Dados salvos:', {
-                token: localStorage.getItem('token'),
-                usuario: localStorage.getItem('usuario')
-            });
-
-            // Aguarda um momento para garantir que os dados foram salvos
-            await new Promise(resolve => setTimeout(resolve, 100));
-
-            // Redireciona para o painel admin
+            console.log('Login bem-sucedido, redirecionando...');
             window.location.href = '/admin';
 
         } catch (erro) {
@@ -118,6 +106,21 @@ class GerenciadorLogin {
             hash: hashHex,
             hashEsperado: '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9'
         });
+        
+        return hashHex;
+    }
+
+    async _gerarHashSenha(senha) {
+        // Converte a string para bytes
+        const encoder = new TextEncoder();
+        const data = encoder.encode(senha);
+        
+        // Gera o hash SHA-256
+        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+        
+        // Converte para string hexadecimal
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
         
         return hashHex;
     }
