@@ -60,13 +60,16 @@ class GerenciadorLogin {
                 headers: Object.fromEntries(resposta.headers.entries())
             });
 
-            if (!resposta.ok) {
-                throw new Error(dados.erro?.mensagem || this.MENSAGENS.ERRO_SERVIDOR);
-            }
-
-            if (!dados.sucesso) {
+            if (!resposta.ok || !dados.sucesso) {
                 throw new Error(dados.erro?.mensagem || this.MENSAGENS.SENHA_INCORRETA);
             }
+
+            // Armazena o token e dados do usuário
+            localStorage.setItem('token', dados.dados.token);
+            localStorage.setItem('usuario', JSON.stringify(dados.dados.usuario));
+            
+            // Configura o token para todas as requisições futuras
+            this._configurarHeadersAutenticacao(dados.dados.token);
 
             return dados.dados;
 
@@ -78,6 +81,18 @@ class GerenciadorLogin {
                 timestamp: new Date().toISOString()
             });
             throw erro;
+        }
+    }
+
+    _configurarHeadersAutenticacao(token) {
+        // Configura o header de autorização para todas as requisições futuras
+        if (window.fetch) {
+            const originalFetch = window.fetch;
+            window.fetch = function(url, options = {}) {
+                options.headers = options.headers || {};
+                options.headers['Authorization'] = `Bearer ${token}`;
+                return originalFetch(url, options);
+            };
         }
     }
 

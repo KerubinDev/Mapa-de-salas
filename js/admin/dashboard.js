@@ -21,7 +21,30 @@ class GerenciadorDashboard {
      * @private
      */
     _inicializarEventos() {
-        this._btnSair.addEventListener('click', () => this._realizarLogout());
+        this._btnSair.addEventListener('click', async () => {
+            try {
+                const token = localStorage.getItem('token');
+                
+                // Faz a requisição de logout
+                const resposta = await fetch('/api/auth/logout', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                // Limpa os dados locais
+                localStorage.removeItem('token');
+                localStorage.removeItem('usuario');
+                
+                // Redireciona para a página de login
+                window.location.href = '/login.html';
+            } catch (erro) {
+                console.error('Erro ao fazer logout:', erro);
+                window.location.href = '/login.html';
+            }
+        });
     }
 
     /**
