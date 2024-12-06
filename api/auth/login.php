@@ -20,20 +20,22 @@ if (!isset($dados['email']) || !isset($dados['senha'])) {
 
 // Lê o banco de dados
 $db = json_decode(file_get_contents(DB_FILE), true);
-$usuarios = $db['usuarios'] ?? [];
+error_log("Banco antes da atualização: " . json_encode($db));
 
 // Procura o usuário
-$usuario = null;
-foreach ($usuarios as &$u) {
+$usuarioIndex = null;
+foreach ($db['usuarios'] as $index => $u) {
     if ($u['email'] === $dados['email']) {
-        $usuario = &$u;
+        $usuarioIndex = $index;
         break;
     }
 }
 
-if (!$usuario) {
+if ($usuarioIndex === null) {
     responderErro('Usuário não encontrado', 401);
 }
+
+$usuario = &$db['usuarios'][$usuarioIndex];
 
 // Verifica a senha
 error_log("Senha recebida (hash): " . $dados['senha']);
@@ -51,19 +53,28 @@ error_log("Novo token gerado: " . $token);
 // Atualiza o token do usuário
 $usuario['token'] = $token;
 $usuario['ultimoLogin'] = date('Y-m-d H:i:s');
+$usuario['dataAtualizacao'] = date('Y-m-d H:i:s');
+
+error_log("Usuário após atualização: " . json_encode($usuario));
+error_log("Banco após atualização: " . json_encode($db));
 
 // Salva as alterações no banco
-file_put_contents(DB_FILE, json_encode($db, JSON_PRETTY_PRINT));
+if (file_put_contents(DB_FILE, json_encode($db, JSON_PRETTY_PRINT)) === false) {
+    error_log("Erro ao salvar no banco de dados");
+    responderErro('Erro interno do servidor', 500);
+}
+
 error_log("Banco atualizado com novo token");
 
 // Remove dados sensíveis antes de retornar
-unset($usuario['senha']);
+$respostaUsuario = $usuario;
+unset($respostaUsuario['senha']);
 
 // Retorna os dados do usuário e o token
 responderJson([
     'sucesso' => true,
     'dados' => [
         'token' => $token,
-        'usuario' => $usuario
+        'usuario' => $respostaUsuario
     ]
 ]);
